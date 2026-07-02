@@ -1,0 +1,95 @@
+info:
+  name: Me
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: http://localhost:3000/api/users/me
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+examples:
+  - name: success
+    request:
+      url: http://localhost:3000/api/users/me
+      method: GET
+      headers:
+        - name: Authorization
+          value: Bearer {{token}}
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: x-powered-by
+          value: Express
+        - name: x-request-id
+          value: d08ddccc-3e3f-4e59-804e-b6f260414faf
+        - name: content-type
+          value: application/json; charset=utf-8
+        - name: content-length
+          value: "191"
+        - name: etag
+          value: W/"bf-eYUKU8NM9ZWl4V8aI1MSaJOhfFE"
+        - name: date
+          value: Thu, 02 Jul 2026 10:13:41 GMT
+        - name: connection
+          value: keep-alive
+        - name: keep-alive
+          value: timeout=5
+      body:
+        type: json
+        data: |-
+          {
+            "success": true,
+            "data": {
+              "id": "6a4632bf8f48a85e0ac8efc3",
+              "studentId": "12345678",
+              "name": "Alex Choi",
+              "faculty": "Engineering",
+              "major": "Computer Science",
+              "yearOfStudy": 1,
+              "interests": [
+                "web",
+                "ai"
+              ]
+            }
+          }
+  - name: unauth
+    request:
+      url: http://localhost:3000/api/users/me
+      method: GET
+    response:
+      status: 401
+      statusText: Unauthorized
+      headers:
+        - name: x-powered-by
+          value: Express
+        - name: x-request-id
+          value: fc8645dd-24d6-4aad-9ff3-684434b78ab0
+        - name: content-type
+          value: application/json; charset=utf-8
+        - name: content-length
+          value: "40"
+        - name: etag
+          value: W/"28-FUA6V4JbfRf7Mh4r5bmwNPsixTA"
+        - name: date
+          value: Thu, 02 Jul 2026 10:14:09 GMT
+        - name: connection
+          value: keep-alive
+        - name: keep-alive
+          value: timeout=5
+      body:
+        type: json
+        data: |-
+          {
+            "success": false,
+            "error": "Unauthorized"
+          }

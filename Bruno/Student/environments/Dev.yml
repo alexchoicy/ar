@@ -1,0 +1,6 @@
+name: Dev
+variables:
+  - secret: true
+    name: token
+  - secret: true
+    name: id

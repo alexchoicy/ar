@@ -1,0 +1,114 @@
+info:
+  name: Login
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:3000/api/auth/login
+  body:
+    type: json
+    data: |-
+      {
+        "studentId": "{{id}}",
+        "name": "{{name}}"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+examples:
+  - name: Correct
+    request:
+      url: http://localhost:3000/api/auth/login
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "studentId": "12345678",
+            "name": "Alex Choi"
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: x-powered-by
+          value: Express
+        - name: x-request-id
+          value: 2b573c79-b435-4357-8fe7-fa4bf4d5c1c6
+        - name: content-type
+          value: application/json; charset=utf-8
+        - name: content-length
+          value: "391"
+        - name: etag
+          value: W/"187-ogI61/bBQddHriYOXxtF6HSXhKg"
+        - name: date
+          value: Thu, 02 Jul 2026 09:55:52 GMT
+        - name: connection
+          value: keep-alive
+        - name: keep-alive
+          value: timeout=5
+      body:
+        type: json
+        data: |-
+          {
+            "success": true,
+            "data": {
+              "token": "",
+              "user": {
+                "id": "6a4632bf8f48a85e0ac8efc3",
+                "studentId": "12345678",
+                "name": "Alex Choi",
+                "faculty": "Engineering",
+                "major": "Computer Science",
+                "yearOfStudy": 1,
+                "interests": [
+                  "web",
+                  "ai"
+                ]
+              }
+            }
+          }
+  - name: Incorrect
+    request:
+      url: http://localhost:3000/api/auth/login
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "studentId": "12345679",
+            "name": "Alex Coi"
+          }
+    response:
+      status: 401
+      statusText: Unauthorized
+      headers:
+        - name: x-powered-by
+          value: Express
+        - name: x-request-id
+          value: fbd5d769-2b89-433c-bfc5-8d4bbdfcc95a
+        - name: content-type
+          value: application/json; charset=utf-8
+        - name: content-length
+          value: "47"
+        - name: etag
+          value: W/"2f-fzy16ZwdCVXD/4e+iuzv+10jbVg"
+        - name: date
+          value: Thu, 02 Jul 2026 09:55:39 GMT
+        - name: connection
+          value: keep-alive
+        - name: keep-alive
+          value: timeout=5
+      body:
+        type: json
+        data: |-
+          {
+            "success": false,
+            "error": "Invalid credentials"
+          }

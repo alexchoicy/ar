@@ -1,0 +1,126 @@
+info:
+  name: Register
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:3000/api/users/register
+  body:
+    type: json
+    data: |-
+      {
+        "studentId": "{{id}}",
+        "name": "{{name}}",
+        "faculty": "Engineering",
+        "major": "Computer Science",
+        "yearOfStudy": 1,
+        "interests": ["web", "ai"]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+examples:
+  - name: success
+    request:
+      url: http://localhost:3000/api/users/register
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "studentId": "12345678",
+            "name": "Alex Choi",
+            "faculty": "Engineering",
+            "major": "Computer Science",
+            "yearOfStudy": 1,
+            "interests": ["web", "ai"]
+          }
+    response:
+      status: 201
+      statusText: Created
+      headers:
+        - name: x-powered-by
+          value: Express
+        - name: x-request-id
+          value: 8338adb8-00fc-4362-8d48-2307ff0bedfc
+        - name: content-type
+          value: application/json; charset=utf-8
+        - name: content-length
+          value: "391"
+        - name: etag
+          value: W/"187-82XWgLSnga/k/pqJVbPB7z6BSZQ"
+        - name: date
+          value: Thu, 02 Jul 2026 09:51:16 GMT
+        - name: connection
+          value: keep-alive
+        - name: keep-alive
+          value: timeout=5
+      body:
+        type: json
+        data: |-
+          {
+            "success": true,
+            "data": {
+              "token": "",
+              "user": {
+                "id": "6a4634941c3cf4fcf74e71ec",
+                "studentId": "12345678",
+                "name": "Alex Choi",
+                "faculty": "Engineering",
+                "major": "Computer Science",
+                "yearOfStudy": 1,
+                "interests": [
+                  "web",
+                  "ai"
+                ]
+              }
+            }
+          }
+  - name: duplicate key
+    request:
+      url: http://localhost:3000/api/users/register
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "studentId": "12345678",
+            "name": "Alex Choi",
+            "faculty": "Engineering",
+            "major": "Computer Science",
+            "yearOfStudy": 1,
+            "interests": ["web", "ai"]
+          }
+    response:
+      status: 409
+      statusText: Conflict
+      headers:
+        - name: x-powered-by
+          value: Express
+        - name: x-request-id
+          value: 95982ad0-5763-4a7f-b4e1-7f84b0c56f84
+        - name: content-type
+          value: application/json; charset=utf-8
+        - name: content-length
+          value: "41"
+        - name: etag
+          value: W/"29-XO8ZkhlwKJsXwWIwoHN12uafTz4"
+        - name: date
+          value: Thu, 02 Jul 2026 09:51:00 GMT
+        - name: connection
+          value: keep-alive
+        - name: keep-alive
+          value: timeout=5
+      body:
+        type: json
+        data: |-
+          {
+            "success": false,
+            "error": "Duplicate key"
+          }

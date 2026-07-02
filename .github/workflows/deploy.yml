@@ -1,0 +1,30 @@
+name: Deploy
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - ar-backend/**
+  workflow_dispatch:
+
+concurrency:
+  group: backend-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: tailscale/github-action@v4
+        with:
+          authkey: ${{ secrets.TS_AUTHKEY }}
+          tags: tag:ci
+          statedir: /tmp/tailscale-state/
+
+      - name: Run deploy
+        run: ssh -o StrictHostKeyChecking=accept-new deploy-bu@100.115.135.90 'sudo /usr/local/bin/deploy-bu'
