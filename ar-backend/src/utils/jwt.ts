@@ -12,7 +12,7 @@ export function signJwt(payload: JwtPayload) {
 		throw new Error("JWT_SECRET is required");
 	}
 
-	return jwt.sign(payload, secret);
+	return jwt.sign(payload, secret, { expiresIn: "30d" });
 }
 
 export function verifyJwt(token: string) {
