@@ -27,4 +27,4 @@ jobs:
           statedir: /tmp/tailscale-state/
 
       - name: Run deploy
-        run: ssh -o StrictHostKeyChecking=accept-new deploy-bu@100.115.135.90 'sudo /usr/local/bin/deploy-bu'
+        run: ssh -o StrictHostKeyChecking=accept-new deploy-bu@services-server 'sudo /usr/local/bin/deploy-bu'
