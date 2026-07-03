@@ -59,7 +59,15 @@ examples:
               "interests": [
                 "web",
                 "ai"
-              ]
+              ],
+              "eStamps": [],
+              "savedEvents": [],
+              "savedBooths": [],
+              "isCompletedSurvey": false,
+              "redeemed": {
+                "minorGift": {},
+                "majorGift": {}
+              }
             }
           }
   - name: unauth

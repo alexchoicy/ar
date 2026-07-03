@@ -4,3 +4,5 @@ variables:
     name: token
   - secret: true
     name: id
+  - name: name
+    value: Alex Choi
