@@ -112,17 +112,17 @@ locationRouter.get("/:id", async (req, res) => {
 		throw createHttpError(404, "Location not found");
 	}
 
-	const location = await Location.findById(req.params.id).lean();
+	const [location, booths, events] = await Promise.all([
+		Location.findById(req.params.id).lean(),
+		Booth.find({ locationId: req.params.id }).sort({ priority: -1, name: 1 }).lean(),
+		Event.find({ locationId: req.params.id }).sort({ startsAt: 1, priority: -1 }).lean(),
+	]);
 
 	if (!location) {
 		throw createHttpError(404, "Location not found");
 	}
 
-	const [building, booths, events] = await Promise.all([
-		Building.findById(location.buildingId).lean(),
-		Booth.find({ locationId: location._id }).sort({ priority: -1, name: 1 }).lean(),
-		Event.find({ locationId: location._id }).sort({ startsAt: 1, priority: -1 }).lean(),
-	]);
+	const building = await Building.findById(location.buildingId).lean();
 
 	return res.api(200, toLocationOutput(location, building, booths, events));
 });

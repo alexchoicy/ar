@@ -10,6 +10,7 @@ const studentSchema = new Schema(
 			trim: true,
 			match: /^\d{8}$/,
 		},
+		email: { type: String, required: true, trim: true, lowercase: true },
 		name: { type: String, required: true, trim: true },
 		faculty: { type: String, required: true, trim: true },
 		major: { type: String, required: true, trim: true },

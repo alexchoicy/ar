@@ -17,6 +17,8 @@ const buildingSchema = new Schema(
 	{ timestamps: true },
 );
 
+buildingSchema.index({ campusZone: 1, name: 1 });
+
 export type BuildingDocument = InferSchemaType<typeof buildingSchema>;
 
 export const Building = model<BuildingDocument>("Building", buildingSchema);

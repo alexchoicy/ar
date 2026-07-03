@@ -31,6 +31,7 @@ authRouter.post("/login", validateBody(loginInput), async (req, res) => {
 			id: student.id,
 			role: "student",
 			studentId: student.studentId,
+			email: student.email,
 			name: student.name,
 			faculty: student.faculty,
 			major: student.major,

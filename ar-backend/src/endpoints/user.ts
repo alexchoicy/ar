@@ -14,6 +14,7 @@ export const userRouter = Router();
 
 const registerInput = z.object({
 	studentId: z.string().regex(/^\d{8}$/, "studentId must be 8 digits"),
+	email: z.email(),
 	name: z.string().min(1),
 	faculty: z.string().min(1),
 	major: z.string().min(1),
@@ -41,6 +42,7 @@ type RegisterOutput = {
 type UserOutput = {
 	id: string;
 	studentId: string;
+	email: string;
 	name: string;
 	faculty: string;
 	major: string;
@@ -59,6 +61,7 @@ type UserOutput = {
 function toUserOutput(student: {
 	id: string;
 	studentId: string;
+	email: string;
 	name: string;
 	faculty: string;
 	major: string;
@@ -76,18 +79,28 @@ function toUserOutput(student: {
 	return {
 		id: student.id,
 		studentId: student.studentId,
+		email: student.email,
 		name: student.name,
 		faculty: student.faculty,
 		major: student.major,
 		yearOfStudy: student.yearOfStudy,
 		interests: student.interests,
-		eStamps: student.eStamps.map((stamp) => ({ boothId: stamp.id.toString(), dateTime: stamp.dateTime })),
+		eStamps: student.eStamps.map((stamp) => ({
+			boothId: stamp.id.toString(),
+			dateTime: stamp.dateTime,
+		})),
 		savedEvents: student.savedEvents.map((event) => event.toString()),
 		savedBooths: student.savedBooths.map((booth) => booth.toString()),
 		isCompletedSurvey: student.isCompletedSurvey,
 		redeemed: {
-			minorGift: { redeemedDateTime: student.redeemed?.minorGift?.redeemedDateTime ?? undefined },
-			majorGift: { redeemedDateTime: student.redeemed?.majorGift?.redeemedDateTime ?? undefined },
+			minorGift: {
+				redeemedDateTime:
+					student.redeemed?.minorGift?.redeemedDateTime ?? undefined,
+			},
+			majorGift: {
+				redeemedDateTime:
+					student.redeemed?.majorGift?.redeemedDateTime ?? undefined,
+			},
 		},
 	};
 }
@@ -102,150 +115,186 @@ userRouter.get("/me", requireAuth, async (req, res) => {
 	return res.api(200, toUserOutput(student));
 });
 
-userRouter.post("/saved/events", requireStudent, validateBody(savedInput), async (req, res) => {
-	const event = await Event.exists({ _id: req.body.id });
-
-	if (!event) {
-		throw createHttpError(404, "Event not found");
-	}
-
-	const student = await Student.findById(req.user?.sub);
-
-	if (!student) {
-		throw createHttpError(404, "User not found");
-	}
-
-	const isSaved = student.savedEvents.some((savedEvent) => savedEvent.equals(req.body.id));
-	student.savedEvents = isSaved
-		? student.savedEvents.filter((savedEvent) => !savedEvent.equals(req.body.id))
-		: [...student.savedEvents, req.body.id];
-	await student.save();
-
-	return res.api(200, {
-		isSaved: !isSaved,
-		savedEvents: student.savedEvents.map((savedEvent) => savedEvent.toString()),
-	});
-});
-
-userRouter.post("/saved/booths", requireStudent, validateBody(savedInput), async (req, res) => {
-	const booth = await Booth.exists({ _id: req.body.id });
-
-	if (!booth) {
-		throw createHttpError(404, "Booth not found");
-	}
-
-	const student = await Student.findById(req.user?.sub);
-
-	if (!student) {
-		throw createHttpError(404, "User not found");
-	}
-
-	const isSaved = student.savedBooths.some((savedBooth) => savedBooth.equals(req.body.id));
-	student.savedBooths = isSaved
-		? student.savedBooths.filter((savedBooth) => !savedBooth.equals(req.body.id))
-		: [...student.savedBooths, req.body.id];
-	await student.save();
-
-	return res.api(200, {
-		isSaved: !isSaved,
-		savedBooths: student.savedBooths.map((savedBooth) => savedBooth.toString()),
-	});
-});
-
-userRouter.post("/stamps", requireStudent, validateBody(stampInput), async (req, res) => {
-	const booth = await Booth.findOne({ qrCode: req.body.id });
-
-	if (!booth) {
-		throw createHttpError(404, "Booth not found");
-	}
-
-	if (!booth.givesStamp) {
-		throw createHttpError(400, "Booth does not give stamps");
-	}
-
-	const stamp = { id: booth._id, dateTime: new Date() };
-	const stampedStudent = await Student.findOneAndUpdate(
-		{ _id: req.user?.sub, "eStamps.id": { $ne: booth._id } },
-		{ $push: { eStamps: stamp } },
-		{ new: true },
-	);
-
-	if (stampedStudent) {
-		return res.api(201, {
-			stamp: { boothId: booth.id, dateTime: stamp.dateTime },
-			stamps: stampedStudent.eStamps.length,
-		});
-	}
-
-	const student = await Student.findById(req.user?.sub);
-
-	if (!student) {
-		throw createHttpError(404, "User not found");
-	}
-
-	const existingStamp = student.eStamps.find((stamp) => stamp.id.equals(booth._id));
-
-	if (existingStamp) {
-		return res.api(200, {
-			stamp: { boothId: booth.id, dateTime: existingStamp.dateTime },
-			stamps: student.eStamps.length,
-		});
-	}
-
-	throw createHttpError(400, "Unable to add stamp");
-});
-
-userRouter.post("/redeem", requireStudent, validateBody(redeemInput), async (req, res) => {
-	const key = req.body.type === "minor" ? "minorGift" : "majorGift";
-	const requiredStamps = req.body.type === "minor" ? 5 : 10;
-	const redeemedPath = `redeemed.${key}.redeemedDateTime`;
-	const redeemedStudent = await Student.findOneAndUpdate(
-		{
-			_id: req.user?.sub,
-			isCompletedSurvey: true,
-			[redeemedPath]: null,
-			$expr: { $gte: [{ $size: { $ifNull: ["$eStamps", []] } }, requiredStamps] },
-		},
-		{ $set: { [redeemedPath]: new Date() } },
-		{ new: true },
-	);
-
-	if (redeemedStudent) {
-		return res.api(200, toUserOutput(redeemedStudent));
-	}
-
-	const student = await Student.findById(req.user?.sub);
-
-	if (!student) {
-		throw createHttpError(404, "User not found");
-	}
-
-	if (!student.isCompletedSurvey) {
-		throw createHttpError(400, "Survey must be completed before redemption");
-	}
-
-	if (student.eStamps.length < requiredStamps) {
-		throw createHttpError(400, `${requiredStamps} stamps required`);
-	}
-
-	if (student.redeemed?.[key]?.redeemedDateTime) {
-		throw createHttpError(400, "Gift already redeemed");
-	}
-
-	throw createHttpError(400, "Unable to redeem gift");
-});
-
 userRouter.post(
-	"/register",
-	validateBody(registerInput),
+	"/saved/events",
+	requireStudent,
+	validateBody(savedInput),
 	async (req, res) => {
-		const student = await Student.create(req.body);
-		const token = signJwt({ sub: student.id, role: "student", studentId: student.studentId });
-		const output: RegisterOutput = {
-			token,
-			user: toUserOutput(student),
-		};
+		const event = await Event.exists({ _id: req.body.id });
 
-		return res.api(201, output);
+		if (!event) {
+			throw createHttpError(404, "Event not found");
+		}
+
+		const student = await Student.findById(req.user?.sub);
+
+		if (!student) {
+			throw createHttpError(404, "User not found");
+		}
+
+		const isSaved = student.savedEvents.some((savedEvent) =>
+			savedEvent.equals(req.body.id),
+		);
+		student.savedEvents = isSaved
+			? student.savedEvents.filter(
+					(savedEvent) => !savedEvent.equals(req.body.id),
+				)
+			: [...student.savedEvents, req.body.id];
+		await student.save();
+
+		return res.api(200, {
+			isSaved: !isSaved,
+			savedEvents: student.savedEvents.map((savedEvent) =>
+				savedEvent.toString(),
+			),
+		});
 	},
 );
+
+userRouter.post(
+	"/saved/booths",
+	requireStudent,
+	validateBody(savedInput),
+	async (req, res) => {
+		const booth = await Booth.exists({ _id: req.body.id });
+
+		if (!booth) {
+			throw createHttpError(404, "Booth not found");
+		}
+
+		const student = await Student.findById(req.user?.sub);
+
+		if (!student) {
+			throw createHttpError(404, "User not found");
+		}
+
+		const isSaved = student.savedBooths.some((savedBooth) =>
+			savedBooth.equals(req.body.id),
+		);
+		student.savedBooths = isSaved
+			? student.savedBooths.filter(
+					(savedBooth) => !savedBooth.equals(req.body.id),
+				)
+			: [...student.savedBooths, req.body.id];
+		await student.save();
+
+		return res.api(200, {
+			isSaved: !isSaved,
+			savedBooths: student.savedBooths.map((savedBooth) =>
+				savedBooth.toString(),
+			),
+		});
+	},
+);
+
+userRouter.post(
+	"/stamps",
+	requireStudent,
+	validateBody(stampInput),
+	async (req, res) => {
+		const booth = await Booth.findOne({ qrCode: req.body.id });
+
+		if (!booth) {
+			throw createHttpError(404, "Booth not found");
+		}
+
+		if (!booth.givesStamp) {
+			throw createHttpError(400, "Booth does not give stamps");
+		}
+
+		const stamp = { id: booth._id, dateTime: new Date() };
+		const stampedStudent = await Student.findOneAndUpdate(
+			{ _id: req.user?.sub, "eStamps.id": { $ne: booth._id } },
+			{ $push: { eStamps: stamp } },
+			{ new: true },
+		);
+
+		if (stampedStudent) {
+			return res.api(201, {
+				stamp: { boothId: booth.id, dateTime: stamp.dateTime },
+				stamps: stampedStudent.eStamps.length,
+			});
+		}
+
+		const student = await Student.findById(req.user?.sub);
+
+		if (!student) {
+			throw createHttpError(404, "User not found");
+		}
+
+		const existingStamp = student.eStamps.find((stamp) =>
+			stamp.id.equals(booth._id),
+		);
+
+		if (existingStamp) {
+			return res.api(200, {
+				stamp: { boothId: booth.id, dateTime: existingStamp.dateTime },
+				stamps: student.eStamps.length,
+			});
+		}
+
+		throw createHttpError(400, "Unable to add stamp");
+	},
+);
+
+userRouter.post(
+	"/redeem",
+	requireStudent,
+	validateBody(redeemInput),
+	async (req, res) => {
+		const key = req.body.type === "minor" ? "minorGift" : "majorGift";
+		const requiredStamps = req.body.type === "minor" ? 5 : 10;
+		const redeemedPath = `redeemed.${key}.redeemedDateTime`;
+		const redeemedStudent = await Student.findOneAndUpdate(
+			{
+				_id: req.user?.sub,
+				isCompletedSurvey: true,
+				[redeemedPath]: null,
+				$expr: {
+					$gte: [{ $size: { $ifNull: ["$eStamps", []] } }, requiredStamps],
+				},
+			},
+			{ $set: { [redeemedPath]: new Date() } },
+			{ new: true },
+		);
+
+		if (redeemedStudent) {
+			return res.api(200, toUserOutput(redeemedStudent));
+		}
+
+		const student = await Student.findById(req.user?.sub);
+
+		if (!student) {
+			throw createHttpError(404, "User not found");
+		}
+
+		if (!student.isCompletedSurvey) {
+			throw createHttpError(400, "Survey must be completed before redemption");
+		}
+
+		if (student.eStamps.length < requiredStamps) {
+			throw createHttpError(400, `${requiredStamps} stamps required`);
+		}
+
+		if (student.redeemed?.[key]?.redeemedDateTime) {
+			throw createHttpError(400, "Gift already redeemed");
+		}
+
+		throw createHttpError(400, "Unable to redeem gift");
+	},
+);
+
+userRouter.post("/register", validateBody(registerInput), async (req, res) => {
+	const student = await Student.create(req.body);
+	const token = signJwt({
+		sub: student.id,
+		role: "student",
+		studentId: student.studentId,
+	});
+	const output: RegisterOutput = {
+		token,
+		user: toUserOutput(student),
+	};
+
+	return res.api(201, output);
+});

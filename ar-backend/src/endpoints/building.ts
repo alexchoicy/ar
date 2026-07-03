@@ -21,16 +21,22 @@ buildingRouter.get("/:id", async (req, res) => {
 		throw createHttpError(404, "Building not found");
 	}
 
-	const building = await Building.findById(req.params.id).lean();
+	const [building, locations] = await Promise.all([
+		Building.findById(req.params.id).lean(),
+		Location.find({ buildingId: req.params.id }).sort({ name: 1 }).lean(),
+	]);
 
 	if (!building) {
 		throw createHttpError(404, "Building not found");
 	}
 
-	const locations = await Location.find({ buildingId: building._id }).sort({ name: 1 }).lean();
 	const locationIds = locations.map((location) => location._id);
-	const booths = await Booth.find({ locationId: { $in: locationIds } }).sort({ priority: -1, name: 1 }).lean();
-	const events = await Event.find({ locationId: { $in: locationIds } }).sort({ startsAt: 1, priority: -1 }).lean();
+	const [booths, events] = locationIds.length
+		? await Promise.all([
+				Booth.find({ locationId: { $in: locationIds } }).sort({ priority: -1, name: 1 }).lean(),
+				Event.find({ locationId: { $in: locationIds } }).sort({ startsAt: 1, priority: -1 }).lean(),
+			])
+		: [[], []];
 	const boothsByLocation = groupByLocation(booths);
 	const eventsByLocation = groupByLocation(events);
 

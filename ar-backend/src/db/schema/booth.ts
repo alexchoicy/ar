@@ -13,7 +13,7 @@ const boothSchema = new Schema(
 		name: { type: String, required: true, trim: true },
 		overview: { type: String, required: true, trim: true },
 		category: { type: String, required: true, trim: true },
-		locationId: { type: Schema.Types.ObjectId, ref: "Location", required: true, index: true },
+		locationId: { type: Schema.Types.ObjectId, ref: "Location", required: true },
 		startTime: { type: String, required: true, trim: true },
 		endTime: { type: String, required: true, trim: true },
 		imageObject: { type: String, required: true, trim: true },
@@ -51,6 +51,9 @@ const boothSchema = new Schema(
 	},
 	{ timestamps: true },
 );
+
+boothSchema.index({ priority: -1, name: 1 });
+boothSchema.index({ locationId: 1, priority: -1, name: 1 });
 
 export type BoothDocument = InferSchemaType<typeof boothSchema>;
 
