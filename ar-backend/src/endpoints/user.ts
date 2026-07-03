@@ -46,7 +46,7 @@ type UserOutput = {
 	major: string;
 	yearOfStudy: number;
 	interests: string[];
-	eStamps: { id: string; dateTime: Date }[];
+	eStamps: { boothId: string; dateTime: Date }[];
 	savedEvents: string[];
 	savedBooths: string[];
 	isCompletedSurvey: boolean;
@@ -81,7 +81,7 @@ function toUserOutput(student: {
 		major: student.major,
 		yearOfStudy: student.yearOfStudy,
 		interests: student.interests,
-		eStamps: student.eStamps.map((stamp) => ({ id: stamp.id.toString(), dateTime: stamp.dateTime })),
+		eStamps: student.eStamps.map((stamp) => ({ boothId: stamp.id.toString(), dateTime: stamp.dateTime })),
 		savedEvents: student.savedEvents.map((event) => event.toString()),
 		savedBooths: student.savedBooths.map((booth) => booth.toString()),
 		isCompletedSurvey: student.isCompletedSurvey,
@@ -172,7 +172,7 @@ userRouter.post("/stamps", requireStudent, validateBody(stampInput), async (req,
 
 	if (stampedStudent) {
 		return res.api(201, {
-			stamp: { id: booth.id, dateTime: stamp.dateTime },
+			stamp: { boothId: booth.id, dateTime: stamp.dateTime },
 			stamps: stampedStudent.eStamps.length,
 		});
 	}
@@ -187,7 +187,7 @@ userRouter.post("/stamps", requireStudent, validateBody(stampInput), async (req,
 
 	if (existingStamp) {
 		return res.api(200, {
-			stamp: { id: booth.id, dateTime: existingStamp.dateTime },
+			stamp: { boothId: booth.id, dateTime: existingStamp.dateTime },
 			stamps: student.eStamps.length,
 		});
 	}

@@ -62,9 +62,9 @@ examples:
               ],
               "eStamps": [
                 {
-                  "id": "6a478b8715822670ceb2ade2",
+                  "boothId": "6a478b8715822670ceb2ade2",
                   "dateTime": "2026-07-03T10:22:35.662Z"
-                }
+                },
               ],
               "savedEvents": [
                 "6a475cbe2956cc4e08e68f48"
@@ -72,10 +72,14 @@ examples:
               "savedBooths": [
                 "6a478b8715822670ceb2ade2"
               ],
-              "isCompletedSurvey": false,
+              "isCompletedSurvey": true,
               "redeemed": {
-                "minorGift": {},
-                "majorGift": {}
+                "minorGift": {
+                  "redeemedDateTime": "2026-07-03T13:57:58.176Z"
+                },
+                "majorGift": {
+                  "redeemedDateTime": "2026-07-03T12:46:11.897Z"
+                }
               }
             }
           }
