@@ -86,7 +86,7 @@ export function toLocationOutput(location: any, building: any, booths?: any[], e
 		name: location.name,
 		floor: location.floor,
 		room: location.room,
-		building: building ? toBuildingOutput(building) : null,
+		...(building !== undefined ? { building: building ? toBuildingOutput(building) : null } : {}),
 		...(booths || events
 			? {
 					booths: (booths ?? []).map(toBoothOutput),

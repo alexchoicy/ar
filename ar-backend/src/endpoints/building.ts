@@ -39,7 +39,7 @@ buildingRouter.get("/:id", async (req, res) => {
 		locations: locations.map((location) =>
 			toLocationOutput(
 				location,
-				building,
+				undefined,
 				boothsByLocation.get(location._id.toString()) ?? [],
 				eventsByLocation.get(location._id.toString()) ?? [],
 			),
