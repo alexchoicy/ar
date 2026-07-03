@@ -1,0 +1,15 @@
+info:
+  name: booths /id
+  type: http
+  seq: 7
+
+http:
+  method: GET
+  url: http://localhost:3000/api/booths/6a478b8715822670ceb2ade2
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

@@ -1,0 +1,140 @@
+info:
+  name: stamps
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: http://localhost:3000/api/users/stamps
+  body:
+    type: json
+    data: |-
+      {
+        "id": "58a032207544c717ab701048c5f23ecba0aab83834dbc8a3813f731390c9e83f"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+examples:
+  - name: Success
+    request:
+      url: http://localhost:3000/api/users/stamps
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "id": "58a032207544c717ab701048c5f23ecba0aab83834dbc8a3813f731390c9e83f"
+          }
+    response:
+      status: 201
+      statusText: Created
+      headers:
+        - name: x-powered-by
+          value: Express
+        - name: x-request-id
+          value: e4bb34fd-f641-46fe-a6b8-feb15192e625
+        - name: content-type
+          value: application/json; charset=utf-8
+        - name: content-length
+          value: "116"
+        - name: etag
+          value: W/"74-B5sUFJfJE2GzhaJOICSKvOfJ7sY"
+        - name: date
+          value: Fri, 03 Jul 2026 10:22:35 GMT
+        - name: connection
+          value: keep-alive
+        - name: keep-alive
+          value: timeout=5
+      body:
+        type: json
+        data: |-
+          {
+            "success": true,
+            "data": {
+              "stamp": {
+                "id": "6a478b8715822670ceb2ade2",
+                "dateTime": "2026-07-03T10:22:35.662Z"
+              },
+              "stamps": 1
+            }
+          }
+  - name: Incorrect Qrcode
+    request:
+      url: http://localhost:3000/api/users/stamps
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "id": "58a032207544c717ab701048c5f23ecba0aab83834dbc8a3813f731390c9e83"
+          }
+    response:
+      status: 404
+      statusText: Not Found
+      headers:
+        - name: x-powered-by
+          value: Express
+        - name: x-request-id
+          value: 1614eb13-5fb2-4ee6-8820-748abc8d12cc
+        - name: content-type
+          value: application/json; charset=utf-8
+        - name: content-length
+          value: "43"
+        - name: etag
+          value: W/"2b-DaXe71oH1uDwh/4Tqsf6iu+Vqk4"
+        - name: date
+          value: Fri, 03 Jul 2026 10:22:53 GMT
+        - name: connection
+          value: keep-alive
+        - name: keep-alive
+          value: timeout=5
+      body:
+        type: json
+        data: |-
+          {
+            "success": false,
+            "error": "Booth not found"
+          }
+  - name: Booths should not give stamps
+    request:
+      url: http://localhost:3000/api/users/stamps
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "id": "58a032207544c717ab701048c5f23ecba0aab83834dbc8a3813f731390c9e83f"
+          }
+    response:
+      status: 400
+      statusText: Bad Request
+      headers:
+        - name: x-powered-by
+          value: Express
+        - name: x-request-id
+          value: e2990d7f-491f-4175-b315-cdc227c6d923
+        - name: content-type
+          value: application/json; charset=utf-8
+        - name: content-length
+          value: "54"
+        - name: etag
+          value: W/"36-TyNAoJPJJpcTBPdrxdTE21zuWUM"
+        - name: date
+          value: Fri, 03 Jul 2026 10:24:01 GMT
+        - name: connection
+          value: keep-alive
+        - name: keep-alive
+          value: timeout=5
+      body:
+        type: json
+        data: |-
+          {
+            "success": false,
+            "error": "Booth does not give stamps"
+          }

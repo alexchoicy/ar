@@ -1,11 +1,11 @@
 info:
-  name: buildings
+  name: buildings /id
   type: http
-  seq: 4
+  seq: 5
 
 http:
   method: GET
-  url: http://localhost:3000/api/buildings
+  url: http://localhost:3000/api/buildings/6a4751921088b32e744417f6
   auth: inherit
 
 settings:
@@ -420,4 +420,81 @@ examples:
                 ]
               }
             ]
+          }
+  - name: example
+    request:
+      url: http://localhost:3000/api/buildings/6a4751921088b32e744417f6
+      method: GET
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: x-powered-by
+          value: Express
+        - name: x-request-id
+          value: 57364a3b-bb45-4d08-979f-cca782e30c34
+        - name: content-type
+          value: application/json; charset=utf-8
+        - name: content-length
+          value: "959"
+        - name: etag
+          value: W/"3bf-jCOT0FKuoYNH+NPdHeoQnyQdBWA"
+        - name: date
+          value: Fri, 03 Jul 2026 09:06:31 GMT
+        - name: connection
+          value: keep-alive
+        - name: keep-alive
+          value: timeout=5
+      body:
+        type: json
+        data: |-
+          {
+            "success": true,
+            "data": {
+              "id": "6a4751921088b32e744417f6",
+              "name": "Li Promenade",
+              "shortCode": "LI_PROMENADE",
+              "campusZone": "Shaw Campus",
+              "addressText": "Li Promenade, Shaw Campus, 34 Renfrew Road, Kowloon Tong, Kowloon, Hong Kong",
+              "geo": [
+                114.18195,
+                22.3379
+              ],
+              "locations": [
+                {
+                  "id": "6a4752d873f9d5513350dc6f",
+                  "name": "Li Promenade Bridge between AML and WLB",
+                  "floor": "",
+                  "room": "",
+                  "building": {
+                    "id": "6a4751921088b32e744417f6",
+                    "name": "Li Promenade",
+                    "shortCode": "LI_PROMENADE",
+                    "campusZone": "Shaw Campus",
+                    "addressText": "Li Promenade, Shaw Campus, 34 Renfrew Road, Kowloon Tong, Kowloon, Hong Kong",
+                    "geo": [
+                      114.18195,
+                      22.3379
+                    ]
+                  },
+                  "booths": [],
+                  "events": [
+                    {
+                      "id": "6a475cbe2956cc4e08e68f48",
+                      "title": "Event title",
+                      "description": "Details",
+                      "startsAt": "2026-08-01T10:00:00.000Z",
+                      "endsAt": "2026-08-01T11:00:00.000Z",
+                      "imageUrl": "https://imagearbu.blob.core.windows.net/imagearbudev/events/6a475cbe2956cc4e08e68f48/cover.jpg",
+                      "category": "Talk",
+                      "tags": [
+                        "AI"
+                      ],
+                      "isFeatured": false,
+                      "priority": 0
+                    }
+                  ]
+                }
+              ]
+            }
           }

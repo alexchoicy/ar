@@ -1,5 +1,11 @@
+import { createHash } from "node:crypto";
+
 import { Schema, model } from "mongoose";
 import type { InferSchemaType } from "mongoose";
+
+export function createBoothQrCode(id: { toString(): string }) {
+	return createHash("sha256").update(`${id.toString()}WHY ARE U WATCHING`).digest("hex");
+}
 
 const boothSchema = new Schema(
 	{
@@ -33,6 +39,15 @@ const boothSchema = new Schema(
 			default: [],
 		},
 		givesStamp: { type: Boolean, default: false },
+		qrCode: {
+			type: String,
+			default: function () {
+				return createBoothQrCode(this._id);
+			},
+			required: true,
+			unique: true,
+			trim: true,
+		},
 	},
 	{ timestamps: true },
 );

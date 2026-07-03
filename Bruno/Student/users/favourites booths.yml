@@ -1,0 +1,64 @@
+info:
+  name: favourites booths
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: http://localhost:3000/api/users/saved/booths
+  body:
+    type: json
+    data: |-
+      {
+        "id": "6a478b8715822670ceb2ade2"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+examples:
+  - name: example
+    request:
+      url: http://localhost:3000/api/users/saved/booths
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "id": "6a478b8715822670ceb2ade2"
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: x-powered-by
+          value: Express
+        - name: x-request-id
+          value: d231400a-0e5a-4463-9d70-71914ed8a919
+        - name: content-type
+          value: application/json; charset=utf-8
+        - name: content-length
+          value: "68"
+        - name: etag
+          value: W/"44-HSqjWhJYTcfJ4A3ZQvx7MHWnmFA"
+        - name: date
+          value: Fri, 03 Jul 2026 10:19:11 GMT
+        - name: connection
+          value: keep-alive
+        - name: keep-alive
+          value: timeout=5
+      body:
+        type: json
+        data: |-
+          {
+            "success": true,
+            "data": {
+              "savedBooths": [
+                "6a478b8715822670ceb2ade2"
+              ]
+            }
+          }

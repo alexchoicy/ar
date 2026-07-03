@@ -17,7 +17,6 @@ http:
         "yearOfStudy": 1,
         "interests": ["web", "ai"]
       }
-  auth: inherit
 
 settings:
   encodeUrl: true

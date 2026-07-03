@@ -1,0 +1,97 @@
+info:
+  name: booths
+  type: http
+  seq: 6
+
+http:
+  method: GET
+  url: http://localhost:3000/api/booths
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+examples:
+  - name: example
+    request:
+      url: http://localhost:3000/api/booths
+      method: GET
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: x-powered-by
+          value: Express
+        - name: x-request-id
+          value: 79d08624-213b-437e-9ced-10f073e79306
+        - name: content-type
+          value: application/json; charset=utf-8
+        - name: content-length
+          value: "1211"
+        - name: etag
+          value: W/"4bb-VeP5BB3fwZXw9hVXruIGXjtH5/c"
+        - name: date
+          value: Fri, 03 Jul 2026 10:16:38 GMT
+        - name: connection
+          value: keep-alive
+        - name: keep-alive
+          value: timeout=5
+      body:
+        type: json
+        data: |-
+          {
+            "success": true,
+            "data": [
+              {
+                "id": "6a478b8715822670ceb2ade2",
+                "qrCode": "58a032207544c717ab701048c5f23ecba0aab83834dbc8a3813f731390c9e83f",
+                "boothCode": "BOOTH001",
+                "name": "Admissions Booth",
+                "overview": "Ask about admissions, programmes, and application requirements.",
+                "category": "Admissions",
+                "startTime": "10:00",
+                "endTime": "17:00",
+                "imageUrl": "https://imagearbu.blob.core.windows.net/imagearbudev/booths/6a478b8715822670ceb2ade2/admissions-booth.png",
+                "tags": [
+                  "admissions",
+                  "undergraduate"
+                ],
+                "priority": 10,
+                "programmes": [
+                  {
+                    "title": "Programme Consultation",
+                    "summary": "Talk with staff about available programmes.",
+                    "imageUrl": "https://imagearbu.blob.core.windows.net/imagearbudev/booths/6a478b8715822670ceb2ade2/programmes/0-programme-consultation.png"
+                  }
+                ],
+                "socialLinks": [
+                  {
+                    "type": "website",
+                    "url": "https://www.hkbu.edu.hk",
+                    "_id": "6a478b8715822670ceb2ade5"
+                  }
+                ],
+                "givesStamp": true,
+                "location": {
+                  "id": "6a4752d873f9d5513350dc6f",
+                  "name": "Li Promenade Bridge between AML and WLB",
+                  "floor": "",
+                  "room": "",
+                  "building": {
+                    "id": "6a4751921088b32e744417f6",
+                    "name": "Li Promenade",
+                    "shortCode": "LI_PROMENADE",
+                    "campusZone": "Shaw Campus",
+                    "addressText": "Li Promenade, Shaw Campus, 34 Renfrew Road, Kowloon Tong, Kowloon, Hong Kong",
+                    "geo": [
+                      114.18195,
+                      22.3379
+                    ]
+                  }
+                }
+              }
+            ]
+          }

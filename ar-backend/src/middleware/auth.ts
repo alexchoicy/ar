@@ -18,3 +18,23 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
 
 	return next();
 }
+
+export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+	requireAuth(req, res, () => {
+		if (req.user?.role !== "admin") {
+			throw createHttpError(403, "Forbidden");
+		}
+
+		return next();
+	});
+}
+
+export function requireStudent(req: Request, res: Response, next: NextFunction) {
+	requireAuth(req, res, () => {
+		if (req.user?.role !== "student") {
+			throw createHttpError(403, "Forbidden");
+		}
+
+		return next();
+	});
+}

@@ -1,8 +1,16 @@
 import jwt from "jsonwebtoken";
 
-export type JwtPayload = {
+export type JwtPayload = StudentJwtPayload | AdminJwtPayload;
+
+type StudentJwtPayload = {
 	sub: string;
+	role: "student";
 	studentId: string;
+};
+
+type AdminJwtPayload = {
+	sub: string;
+	role: "admin";
 };
 
 export function signJwt(payload: JwtPayload) {
@@ -26,6 +34,10 @@ export function verifyJwt(token: string) {
 
 	if (typeof payload === "string") {
 		throw new Error("Invalid JWT payload");
+	}
+
+	if (payload.role !== "admin" && payload.role !== "student") {
+		throw new Error("Invalid JWT role");
 	}
 
 	return payload as JwtPayload;
