@@ -8,6 +8,7 @@ import { Building } from "../db/schema/building.js";
 import { Event } from "../db/schema/event.js";
 import { Location } from "../db/schema/location.js";
 import { requireAdmin } from "../middleware/auth.js";
+import { clearCache } from "../middleware/cache.js";
 import { validateBody } from "../middleware/validateBody.js";
 import { getBlobUrl } from "../utils/blob.js";
 
@@ -135,6 +136,7 @@ locationRouter.post("/", requireAdmin, validateBody(createLocationInput), async 
 	}
 
 	const location = await Location.create(req.body);
+	clearCache();
 
 	return res.api(201, {
 		id: location.id,

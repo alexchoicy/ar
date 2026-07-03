@@ -7,6 +7,7 @@ import { Booth } from "../db/schema/booth.js";
 import { Building } from "../db/schema/building.js";
 import { Location } from "../db/schema/location.js";
 import { requireAdmin } from "../middleware/auth.js";
+import { clearCache } from "../middleware/cache.js";
 import { validateBody } from "../middleware/validateBody.js";
 import { createUploadUrl } from "../utils/blob.js";
 import { toBuildingOutput, toBoothOutput } from "./location.js";
@@ -139,6 +140,7 @@ boothRouter.post("/", requireAdmin, validateBody(createBoothInput), async (req, 
 		socialLinks: req.body.socialLinks,
 		givesStamp: req.body.givesStamp,
 	});
+	clearCache();
 
 	return res.api(201, {
 		booth: toBoothDetailOutput(booth, location, building),

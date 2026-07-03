@@ -6,12 +6,14 @@ import { buildingRouter } from "./endpoints/building.js";
 import { eventRouter } from "./endpoints/event.js";
 import { locationRouter } from "./endpoints/location.js";
 import { userRouter } from "./endpoints/user.js";
+import { cacheGet } from "./middleware/cache.js";
 
 export const routes = Router();
+const publicGetCache = cacheGet();
 
 routes.use("/api/auth", authRouter);
-routes.use("/api/booths", boothRouter);
-routes.use("/api/buildings", buildingRouter);
-routes.use("/api/events", eventRouter);
-routes.use("/api/locations", locationRouter);
+routes.use("/api/booths", publicGetCache, boothRouter);
+routes.use("/api/buildings", publicGetCache, buildingRouter);
+routes.use("/api/events", publicGetCache, eventRouter);
+routes.use("/api/locations", publicGetCache, locationRouter);
 routes.use("/api/users", userRouter);
