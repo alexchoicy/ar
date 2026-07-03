@@ -18,18 +18,21 @@ const studentSchema = new Schema(
 		eStamps: {
 			type: [
 				{
-					stampId: { type: String, required: true, trim: true },
-					earned: { type: Boolean, default: false },
+					id: { type: Schema.Types.ObjectId, ref: "Booth", required: true },
+					dateTime: { type: Date, required: true },
 				},
 			],
 			default: [],
 		},
+		savedEvents: { type: [{ type: Schema.Types.ObjectId, ref: "Event" }], default: [] },
+		savedBooths: { type: [{ type: Schema.Types.ObjectId, ref: "Booth" }], default: [] },
+		isCompletedSurvey: { type: Boolean, default: false },
 		redeemed: {
 			minorGift: {
-				redeemed: { type: Boolean, default: false },
+				redeemedDateTime: { type: Date },
 			},
 			majorGift: {
-				redeemed: { type: Boolean, default: false },
+				redeemedDateTime: { type: Date },
 			},
 		},
 	},

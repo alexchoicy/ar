@@ -31,6 +31,14 @@ type UserOutput = {
 	major: string;
 	yearOfStudy: number;
 	interests: string[];
+	eStamps: { id: string; dateTime: Date }[];
+	savedEvents: string[];
+	savedBooths: string[];
+	isCompletedSurvey: boolean;
+	redeemed: {
+		minorGift?: { redeemedDateTime?: Date };
+		majorGift?: { redeemedDateTime?: Date };
+	};
 };
 
 function toUserOutput(student: {
@@ -41,6 +49,14 @@ function toUserOutput(student: {
 	major: string;
 	yearOfStudy: number;
 	interests: string[];
+	eStamps: { id: { toString(): string }; dateTime: Date }[];
+	savedEvents: { toString(): string }[];
+	savedBooths: { toString(): string }[];
+	isCompletedSurvey: boolean;
+	redeemed?: {
+		minorGift?: { redeemedDateTime?: Date | null } | null;
+		majorGift?: { redeemedDateTime?: Date | null } | null;
+	} | null;
 }): UserOutput {
 	return {
 		id: student.id,
@@ -50,6 +66,14 @@ function toUserOutput(student: {
 		major: student.major,
 		yearOfStudy: student.yearOfStudy,
 		interests: student.interests,
+		eStamps: student.eStamps.map((stamp) => ({ id: stamp.id.toString(), dateTime: stamp.dateTime })),
+		savedEvents: student.savedEvents.map((event) => event.toString()),
+		savedBooths: student.savedBooths.map((booth) => booth.toString()),
+		isCompletedSurvey: student.isCompletedSurvey,
+		redeemed: {
+			minorGift: { redeemedDateTime: student.redeemed?.minorGift?.redeemedDateTime ?? undefined },
+			majorGift: { redeemedDateTime: student.redeemed?.majorGift?.redeemedDateTime ?? undefined },
+		},
 	};
 }
 
