@@ -32,6 +32,7 @@ const stampInput = z.object({
 
 const redeemInput = z.object({
 	type: z.enum(["minor", "major"]),
+	redeemKey: z.string().min(1),
 });
 
 type RegisterOutput = {
@@ -202,16 +203,19 @@ userRouter.post(
 			throw createHttpError(400, "Booth does not give stamps");
 		}
 
-		const stamp = { id: booth._id, dateTime: new Date() };
+		const dateTime = new Date();
 		const stampedStudent = await Student.findOneAndUpdate(
 			{ _id: req.user?.sub, "eStamps.id": { $ne: booth._id } },
-			{ $push: { eStamps: stamp } },
+			{ $push: { eStamps: { id: booth._id, dateTime } } },
 			{ new: true },
 		);
 
 		if (stampedStudent) {
 			return res.api(201, {
-				stamp: { boothId: booth.id, dateTime: stamp.dateTime },
+				stamp: {
+					boothId: booth.id,
+					dateTime,
+				},
 				stamps: stampedStudent.eStamps.length,
 			});
 		}
@@ -242,6 +246,10 @@ userRouter.post(
 	requireStudent,
 	validateBody(redeemInput),
 	async (req, res) => {
+		if (process.env.TEMP_REDEEM_KEY !== req.body.redeemKey) {
+			throw createHttpError(400, "Invalid redeem key");
+		}
+
 		const key = req.body.type === "minor" ? "minorGift" : "majorGift";
 		const requiredStamps = req.body.type === "minor" ? 5 : 10;
 		const redeemedPath = `redeemed.${key}.redeemedDateTime`;
