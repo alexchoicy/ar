@@ -10,7 +10,8 @@ http:
     type: json
     data: |-
       {
-        "type": "major"
+        "type": "major",
+        "redeemKey": "key"
       }
   auth: inherit
 
@@ -292,4 +293,62 @@ examples:
                 }
               }
             }
+          }
+  - name: incorrect key
+    request:
+      url: http://localhost:3000/api/users/redeem
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "type": "major",
+            "redeemKey": "test"
+          }
+    response:
+      status: 400
+      statusText: Bad Request
+      headers:
+        - name: cross-origin-opener-policy
+          value: same-origin
+        - name: cross-origin-resource-policy
+          value: same-origin
+        - name: origin-agent-cluster
+          value: ?1
+        - name: referrer-policy
+          value: no-referrer
+        - name: strict-transport-security
+          value: max-age=31536000; includeSubDomains
+        - name: x-content-type-options
+          value: nosniff
+        - name: x-dns-prefetch-control
+          value: off
+        - name: x-download-options
+          value: noopen
+        - name: x-frame-options
+          value: SAMEORIGIN
+        - name: x-permitted-cross-domain-policies
+          value: none
+        - name: x-xss-protection
+          value: "0"
+        - name: x-request-id
+          value: aabd5811-b554-471d-aeb7-f84b680813c7
+        - name: content-type
+          value: application/json; charset=utf-8
+        - name: content-length
+          value: "46"
+        - name: etag
+          value: W/"2e-IApWvlUl7KSrXjvpy+5Pw9i40FI"
+        - name: date
+          value: Sat, 04 Jul 2026 00:30:41 GMT
+        - name: connection
+          value: keep-alive
+        - name: keep-alive
+          value: timeout=5
+      body:
+        type: json
+        data: |-
+          {
+            "success": false,
+            "error": "Invalid redeem key"
           }
