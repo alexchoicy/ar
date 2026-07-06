@@ -1,6 +1,8 @@
 import { Schema, model } from "mongoose";
 import type { InferSchemaType } from "mongoose";
 
+import { FACULTIES, INTERESTS } from "../../constants/student.js";
+
 const studentSchema = new Schema(
 	{
 		studentId: {
@@ -12,10 +14,10 @@ const studentSchema = new Schema(
 		},
 		email: { type: String, required: true, trim: true, lowercase: true },
 		name: { type: String, required: true, trim: true },
-		faculty: { type: String, required: true, trim: true },
+		faculty: { type: String, required: true, trim: true, enum: FACULTIES },
 		major: { type: String, required: true, trim: true },
 		yearOfStudy: { type: Number, required: true, min: 1 },
-		interests: { type: [String], default: [] },
+		interests: { type: [{ type: String, enum: INTERESTS }], default: [] },
 		eStamps: {
 			type: [
 				{

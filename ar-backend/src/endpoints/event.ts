@@ -3,6 +3,7 @@ import createHttpError from "http-errors";
 import { Types } from "mongoose";
 import { z } from "zod";
 
+import { INTERESTS } from "../constants/student.js";
 import { Building } from "../db/schema/building.js";
 import { Event } from "../db/schema/event.js";
 import { Location } from "../db/schema/location.js";
@@ -24,7 +25,7 @@ const createEventInput = z.object({
 	imageFileName: z.string().min(1),
 	imageContentType: z.string().min(1).optional(),
 	imageSize: z.number().int().positive().optional(),
-	category: z.string().min(1),
+	category: z.enum(INTERESTS),
 	tags: z.array(z.string()).default([]),
 	isFeatured: z.boolean().default(false),
 	priority: z.number().default(0),

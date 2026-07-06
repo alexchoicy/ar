@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import { Schema, model } from "mongoose";
 import type { InferSchemaType } from "mongoose";
 
+import { INTERESTS } from "../../constants/student.js";
+
 export function createBoothQrCode(id: { toString(): string }) {
 	return createHash("sha256").update(`${id.toString()}WHY ARE U WATCHING`).digest("hex");
 }
@@ -12,7 +14,7 @@ const boothSchema = new Schema(
 		boothCode: { type: String, required: true, unique: true, trim: true },
 		name: { type: String, required: true, trim: true },
 		overview: { type: String, required: true, trim: true },
-		category: { type: String, required: true, trim: true },
+		category: { type: String, required: true, trim: true, enum: INTERESTS },
 		locationId: { type: Schema.Types.ObjectId, ref: "Location", required: true },
 		startTime: { type: String, required: true, trim: true },
 		endTime: { type: String, required: true, trim: true },

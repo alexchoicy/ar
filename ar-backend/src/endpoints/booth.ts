@@ -3,6 +3,7 @@ import createHttpError from "http-errors";
 import { Types } from "mongoose";
 import { z } from "zod";
 
+import { INTERESTS } from "../constants/student.js";
 import { Booth } from "../db/schema/booth.js";
 import { Building } from "../db/schema/building.js";
 import { Location } from "../db/schema/location.js";
@@ -18,7 +19,7 @@ const createBoothInput = z.object({
 	boothCode: z.string().min(1),
 	name: z.string().min(1),
 	overview: z.string().min(1),
-	category: z.string().min(1),
+	category: z.enum(INTERESTS),
 	locationId: z.string().refine(Types.ObjectId.isValid, "locationId must be a valid ObjectId"),
 	startTime: z.string().min(1),
 	endTime: z.string().min(1),

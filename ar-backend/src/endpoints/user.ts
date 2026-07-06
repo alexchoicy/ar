@@ -3,6 +3,8 @@ import createHttpError from "http-errors";
 import { Types } from "mongoose";
 import { z } from "zod";
 
+import { FACULTIES, INTERESTS } from "../constants/student.js";
+import type { Faculty, Interest } from "../constants/student.js";
 import { Booth } from "../db/schema/booth.js";
 import { Event } from "../db/schema/event.js";
 import { Student } from "../db/schema/student.js";
@@ -16,10 +18,10 @@ const registerInput = z.object({
 	studentId: z.string().regex(/^\d{8}$/, "studentId must be 8 digits"),
 	email: z.email(),
 	name: z.string().min(1),
-	faculty: z.string().min(1),
+	faculty: z.enum(FACULTIES),
 	major: z.string().min(1),
 	yearOfStudy: z.number().int().default(1),
-	interests: z.array(z.string()).default([]),
+	interests: z.array(z.enum(INTERESTS)).default([]),
 });
 
 const savedInput = z.object({
@@ -45,10 +47,10 @@ type UserOutput = {
 	studentId: string;
 	email: string;
 	name: string;
-	faculty: string;
+	faculty: Faculty;
 	major: string;
 	yearOfStudy: number;
-	interests: string[];
+	interests: Interest[];
 	eStamps: { boothId: string; dateTime: Date }[];
 	savedEvents: string[];
 	savedBooths: string[];
@@ -64,10 +66,10 @@ function toUserOutput(student: {
 	studentId: string;
 	email: string;
 	name: string;
-	faculty: string;
+	faculty: Faculty;
 	major: string;
 	yearOfStudy: number;
-	interests: string[];
+	interests: Interest[];
 	eStamps: { id: { toString(): string }; dateTime: Date }[];
 	savedEvents: { toString(): string }[];
 	savedBooths: { toString(): string }[];
