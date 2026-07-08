@@ -1,0 +1,623 @@
+<script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import { useRoute, useRouter } from "vue-router";
+
+import { Button } from "@/components/ui/button";
+import {
+	Combobox,
+	ComboboxAnchor,
+	ComboboxEmpty,
+	ComboboxGroup,
+	ComboboxInput,
+	ComboboxItem,
+	ComboboxItemIndicator,
+	ComboboxList,
+	ComboboxTrigger,
+	ComboboxViewport,
+} from "@/components/ui/combobox";
+import {
+	Field,
+	FieldError,
+	FieldGroup,
+	FieldLabel,
+	FieldLegend,
+	FieldSeparator,
+	FieldSet,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { INTERESTS_MAP } from "@/interests";
+
+type Building = {
+	id: string;
+	name: string;
+	shortCode: string;
+};
+
+type BoothResponse = {
+	id: string;
+	boothCode: string;
+	name: string;
+	overview: string;
+	category: string;
+	imageUrl: string;
+	programmes: Array<{
+		title: string;
+		summary: string;
+		imageUrl: string;
+	}>;
+	socialLinks: Array<{
+		type: string;
+		url: string;
+	}>;
+	startTime: string;
+	endTime: string;
+	location: null | {
+		floor?: string;
+		room?: string;
+		building: null | { id: string };
+	};
+};
+
+const route = useRoute();
+const router = useRouter();
+const isCreate = computed(() => route.path === "/booths/new");
+const error = ref("");
+const isLoading = ref(true);
+const isSaving = ref(false);
+const buildings = ref<Building[]>([]);
+const selectedBuilding = computed({
+	get: () =>
+		buildings.value.find((building) => building.id === form.buildingId),
+	set: (building: Building | undefined) => {
+		form.buildingId = building?.id ?? "";
+	},
+});
+const interests = Object.entries(INTERESTS_MAP).map(([value, label]) => ({
+	value,
+	label,
+}));
+const selectedInterest = computed({
+	get: () => interests.find((interest) => interest.value === form.category),
+	set: (interest: (typeof interests)[number] | undefined) => {
+		form.category = interest?.value ?? "";
+	},
+});
+const imageFile = ref<File | null>(null);
+const currentImageUrl = ref("");
+const previewImageUrl = ref("");
+const programmes = ref<
+	Array<{
+		title: string;
+		summary: string;
+		currentImageUrl: string;
+		previewImageUrl: string;
+		imageFile: File | null;
+	}>
+>([]);
+const form = reactive({
+	boothCode: "",
+	name: "",
+	overview: "",
+	category: "",
+	buildingId: "",
+	floor: "",
+	room: "",
+	startTime: "",
+	endTime: "",
+	social_instagram: "",
+	social_facebook: "",
+	social_youtube: "",
+	social_twitter: "",
+	social_rednote: "",
+	social_website: "",
+});
+
+const socialFields = [
+	["social_instagram", "Instagram"],
+	["social_facebook", "Facebook"],
+	["social_youtube", "YouTube"],
+	["social_twitter", "Twitter"],
+	["social_rednote", "RedNote"],
+	["social_website", "Website"],
+] as const;
+
+onMounted(async () => {
+	try {
+		const buildingsResponse = await fetch("/api/buildings");
+		const buildingsBody = await buildingsResponse.json();
+
+		if (!buildingsResponse.ok)
+			throw new Error(buildingsBody.error ?? "Failed to load buildings");
+		buildings.value = buildingsBody.data;
+
+		if (isCreate.value) return;
+
+		const boothResponse = await fetch(`/api/booths/${route.params.id}`);
+		const boothBody = await boothResponse.json();
+
+		if (!boothResponse.ok)
+			throw new Error(boothBody.error ?? "Failed to load booth");
+
+		const booth = boothBody.data as BoothResponse;
+		form.boothCode = booth.boothCode;
+		form.name = booth.name;
+		form.overview = booth.overview;
+		form.category = booth.category;
+		currentImageUrl.value = booth.imageUrl;
+		for (const link of booth.socialLinks) {
+			if (link.type in form) form[link.type as keyof typeof form] = link.url;
+		}
+		form.buildingId = booth.location?.building?.id ?? "";
+		form.floor = booth.location?.floor ?? "";
+		form.room = booth.location?.room ?? "";
+		form.startTime = booth.startTime;
+		form.endTime = booth.endTime;
+		programmes.value = booth.programmes.map((programme) => ({
+			title: programme.title,
+			summary: programme.summary,
+			currentImageUrl: programme.imageUrl,
+			previewImageUrl: "",
+			imageFile: null,
+		}));
+	} catch (caught) {
+		error.value =
+			caught instanceof Error ? caught.message : "Failed to load booth";
+	} finally {
+		isLoading.value = false;
+	}
+});
+
+onBeforeUnmount(() => {
+	if (previewImageUrl.value) URL.revokeObjectURL(previewImageUrl.value);
+	for (const programme of programmes.value) {
+		if (programme.previewImageUrl)
+			URL.revokeObjectURL(programme.previewImageUrl);
+	}
+});
+
+function selectImage(event: Event) {
+	const file = (event.target as HTMLInputElement).files?.[0] ?? null;
+
+	if (previewImageUrl.value) URL.revokeObjectURL(previewImageUrl.value);
+	imageFile.value = file;
+	previewImageUrl.value = file ? URL.createObjectURL(file) : "";
+}
+
+function resetImage() {
+	if (previewImageUrl.value) URL.revokeObjectURL(previewImageUrl.value);
+	imageFile.value = null;
+	previewImageUrl.value = "";
+}
+
+function addProgramme() {
+	programmes.value.push({
+		title: "",
+		summary: "",
+		currentImageUrl: "",
+		previewImageUrl: "",
+		imageFile: null,
+	});
+}
+
+function removeProgramme(index: number) {
+	const [programme] = programmes.value.splice(index, 1);
+	if (programme?.previewImageUrl)
+		URL.revokeObjectURL(programme.previewImageUrl);
+}
+
+function selectProgrammeImage(index: number, event: Event) {
+	const programme = programmes.value[index];
+	if (!programme) return;
+
+	const file = (event.target as HTMLInputElement).files?.[0] ?? null;
+	if (programme.previewImageUrl) URL.revokeObjectURL(programme.previewImageUrl);
+	programme.imageFile = file;
+	programme.previewImageUrl = file ? URL.createObjectURL(file) : "";
+}
+
+function resetProgrammeImage(index: number) {
+	const programme = programmes.value[index];
+	if (!programme) return;
+
+	if (programme.previewImageUrl) URL.revokeObjectURL(programme.previewImageUrl);
+	programme.imageFile = null;
+	programme.previewImageUrl = "";
+}
+
+function validateForm() {
+	if (!form.name.trim()) return "Name is required.";
+	if (!form.overview.trim()) return "Overview is required.";
+	if (!form.category) return "Category is required.";
+	if (!form.buildingId) return "Building is required.";
+	if (!form.startTime) return "Start time is required.";
+	if (!form.endTime) return "End time is required.";
+	if (form.startTime >= form.endTime)
+		return "Start time must be before end time.";
+	if (isCreate.value && !imageFile.value) return "Image is required.";
+
+	const incompleteProgramme = programmes.value.find(
+		(programme) =>
+			!programme.title.trim() ||
+			!programme.summary.trim() ||
+			(!programme.currentImageUrl && !programme.imageFile),
+	);
+
+	if (incompleteProgramme)
+		return "Each programme needs a title, summary, and image.";
+
+	return "";
+}
+
+async function save() {
+	error.value = validateForm();
+	if (error.value) {
+		return;
+	}
+
+	isSaving.value = true;
+
+	try {
+		const response = await fetch(
+			isCreate.value ? "/api/booths" : `/api/booths/${route.params.id}`,
+			{
+				method: isCreate.value ? "POST" : "PUT",
+				headers: { "Content-Type": "application/json" },
+				credentials: "include",
+				body: JSON.stringify({
+					...form,
+					...(imageFile.value ? { imageFileName: imageFile.value.name } : {}),
+					socialLinks: socialFields
+						.map(([type]) => ({ type, url: form[type] }))
+						.filter((link) => link.url.trim()),
+					programmes: programmes.value.map((programme) => ({
+						title: programme.title,
+						summary: programme.summary,
+						...(programme.imageFile
+							? { imageFileName: programme.imageFile.name }
+							: {}),
+					})),
+				}),
+			},
+		);
+		const body = await response.json();
+
+		if (!response.ok) throw new Error(body.error ?? "Failed to save booth");
+
+		if (imageFile.value && body.data.uploadUrl) {
+			const uploadResponse = await fetch(body.data.uploadUrl, {
+				method: "PUT",
+				headers: {
+					"Content-Type": imageFile.value.type || "application/octet-stream",
+					"x-ms-blob-type": "BlockBlob",
+				},
+				body: imageFile.value,
+			});
+
+			if (!uploadResponse.ok) throw new Error("Failed to upload image");
+		}
+
+		await Promise.all(
+			(body.data.programmeUploadUrls ?? []).map(
+				async (item: { index: number; uploadUrl: string }) => {
+					const file = programmes.value[item.index]?.imageFile;
+					if (!file) return;
+
+					const uploadResponse = await fetch(item.uploadUrl, {
+						method: "PUT",
+						headers: {
+							"Content-Type": file.type || "application/octet-stream",
+							"x-ms-blob-type": "BlockBlob",
+						},
+						body: file,
+					});
+
+					if (!uploadResponse.ok)
+						throw new Error("Failed to upload programme image");
+				},
+			),
+		);
+
+		await router.push("/");
+	} catch (caught) {
+		error.value =
+			caught instanceof Error ? caught.message : "Failed to save booth";
+	} finally {
+		isSaving.value = false;
+	}
+}
+</script>
+
+<template>
+	<main class="min-h-screen bg-background px-6 py-8">
+		<form
+			class="mx-auto flex w-full max-w-5xl flex-col gap-6"
+			@submit.prevent="save"
+		>
+			<header class="flex items-center justify-between gap-4">
+				<div class="flex flex-col gap-1">
+					<h1 class="text-2xl font-semibold tracking-tight">
+						{{ isCreate ? "Create booth" : "Edit booth" }}
+					</h1>
+					<p class="text-sm text-muted-foreground">
+						{{ isCreate ? "Add a new booth." : "Update booth details." }}
+					</p>
+				</div>
+
+				<Button type="button" variant="outline" @click="router.push('/')"
+					>Back</Button
+				>
+			</header>
+
+			<p v-if="isLoading" class="text-sm text-muted-foreground">Loading...</p>
+
+			<FieldGroup v-if="!isLoading">
+				<FieldSet>
+					<FieldLegend>Details</FieldLegend>
+					<FieldGroup>
+						<Field v-if="!isCreate">
+							<FieldLabel for="booth-code">Code</FieldLabel>
+							<Input
+								id="booth-code"
+								v-model="form.boothCode"
+								disabled
+								required
+							/>
+						</Field>
+
+						<Field>
+							<FieldLabel for="name">Name</FieldLabel>
+							<Input id="name" v-model="form.name" required />
+						</Field>
+
+						<Field>
+							<FieldLabel for="overview">Overview</FieldLabel>
+							<Textarea id="overview" v-model="form.overview" required />
+						</Field>
+
+						<Field>
+							<FieldLabel for="category">Category</FieldLabel>
+							<Combobox v-model="selectedInterest" by="value">
+								<ComboboxAnchor as-child>
+									<ComboboxTrigger as-child>
+										<Button
+											id="category"
+											type="button"
+											variant="outline"
+											class="w-full justify-between"
+										>
+											<span class="truncate">
+												{{ selectedInterest?.label ?? "Select category" }}
+											</span>
+										</Button>
+									</ComboboxTrigger>
+								</ComboboxAnchor>
+								<ComboboxList class="w-(--reka-combobox-trigger-width)">
+									<ComboboxInput placeholder="Search category..." />
+									<ComboboxEmpty>No category found.</ComboboxEmpty>
+									<ComboboxViewport class="max-h-72">
+										<ComboboxGroup>
+											<ComboboxItem
+												v-for="interest in interests"
+												:key="interest.value"
+												:value="interest"
+											>
+												{{ interest.label }}
+												<ComboboxItemIndicator />
+											</ComboboxItem>
+										</ComboboxGroup>
+									</ComboboxViewport>
+								</ComboboxList>
+							</Combobox>
+						</Field>
+					</FieldGroup>
+				</FieldSet>
+
+				<FieldSeparator />
+
+				<FieldSet>
+					<FieldLegend>Image</FieldLegend>
+					<Field>
+						<FieldLabel for="image">Booth image</FieldLabel>
+						<img
+							v-if="previewImageUrl || currentImageUrl"
+							:src="previewImageUrl || currentImageUrl"
+							:alt="form.name"
+							class="h-40 w-full rounded-md border object-cover"
+						/>
+						<div class="flex gap-2">
+							<Input
+								id="image"
+								type="file"
+								accept="image/*"
+								:required="isCreate"
+								@change="selectImage"
+							/>
+							<Button
+								v-if="imageFile"
+								type="button"
+								variant="outline"
+								@click="resetImage"
+							>
+								Reset
+							</Button>
+						</div>
+					</Field>
+				</FieldSet>
+
+				<FieldSeparator />
+
+				<FieldSet>
+					<FieldLegend>Location & Time</FieldLegend>
+					<FieldGroup>
+						<Field>
+							<FieldLabel for="building">Building</FieldLabel>
+							<Combobox v-model="selectedBuilding" by="id">
+								<ComboboxAnchor as-child>
+									<ComboboxTrigger as-child>
+										<Button
+											id="building"
+											type="button"
+											variant="outline"
+											class="w-full justify-between"
+										>
+											<span class="truncate">
+												{{
+													selectedBuilding
+														? `${selectedBuilding.shortCode} - ${selectedBuilding.name}`
+														: "Select building"
+												}}
+											</span>
+										</Button>
+									</ComboboxTrigger>
+								</ComboboxAnchor>
+								<ComboboxList class="w-(--reka-combobox-trigger-width)">
+									<ComboboxInput placeholder="Search building..." />
+									<ComboboxEmpty>No building found.</ComboboxEmpty>
+									<ComboboxViewport class="max-h-72">
+										<ComboboxGroup>
+											<ComboboxItem
+												v-for="building in buildings"
+												:key="building.id"
+												:value="building"
+											>
+												{{ building.shortCode }} - {{ building.name }}
+												<ComboboxItemIndicator />
+											</ComboboxItem>
+										</ComboboxGroup>
+									</ComboboxViewport>
+								</ComboboxList>
+							</Combobox>
+						</Field>
+
+						<div class="grid gap-4 sm:grid-cols-2">
+							<Field>
+								<FieldLabel for="floor">Floor</FieldLabel>
+								<Input id="floor" v-model="form.floor" />
+							</Field>
+
+							<Field>
+								<FieldLabel for="room">Room</FieldLabel>
+								<Input id="room" v-model="form.room" />
+							</Field>
+						</div>
+
+						<div class="grid gap-4 sm:grid-cols-2">
+							<Field>
+								<FieldLabel for="start-time">Start time</FieldLabel>
+								<Input
+									id="start-time"
+									v-model="form.startTime"
+									type="time"
+									required
+								/>
+							</Field>
+
+							<Field>
+								<FieldLabel for="end-time">End time</FieldLabel>
+								<Input
+									id="end-time"
+									v-model="form.endTime"
+									type="time"
+									required
+								/>
+							</Field>
+						</div>
+					</FieldGroup>
+				</FieldSet>
+
+				<FieldSeparator />
+
+				<FieldSet>
+					<FieldLegend>Social Links</FieldLegend>
+					<div class="grid gap-4 sm:grid-cols-2">
+						<Field v-for="[field, label] in socialFields" :key="field">
+							<FieldLabel :for="field">{{ label }}</FieldLabel>
+							<Input :id="field" v-model="form[field]" type="url" />
+						</Field>
+					</div>
+				</FieldSet>
+
+				<FieldSeparator />
+
+				<FieldSet>
+					<div class="flex items-center justify-between gap-4">
+						<FieldLegend>Programmes</FieldLegend>
+						<Button type="button" variant="outline" @click="addProgramme"
+							>Add programme</Button
+						>
+					</div>
+
+					<div
+						v-for="(programme, index) in programmes"
+						:key="index"
+						class="flex flex-col gap-4 rounded-md border p-4"
+					>
+						<div class="flex justify-end">
+							<Button
+								type="button"
+								variant="destructive"
+								size="sm"
+								@click="removeProgramme(index)"
+							>
+								Remove
+							</Button>
+						</div>
+
+						<Field>
+							<FieldLabel :for="`programme-title-${index}`">Title</FieldLabel>
+							<Input
+								:id="`programme-title-${index}`"
+								v-model="programme.title"
+								required
+							/>
+						</Field>
+
+						<Field>
+							<FieldLabel :for="`programme-summary-${index}`"
+								>Summary</FieldLabel
+							>
+							<Textarea
+								:id="`programme-summary-${index}`"
+								v-model="programme.summary"
+								required
+							/>
+						</Field>
+
+						<Field>
+							<FieldLabel :for="`programme-image-${index}`">Image</FieldLabel>
+							<img
+								v-if="programme.previewImageUrl || programme.currentImageUrl"
+								:src="programme.previewImageUrl || programme.currentImageUrl"
+								:alt="programme.title"
+								class="h-40 w-full rounded-md border object-cover"
+							/>
+							<div class="flex gap-2">
+								<Input
+									:id="`programme-image-${index}`"
+									type="file"
+									accept="image/*"
+									@change="selectProgrammeImage(index, $event)"
+								/>
+								<Button
+									v-if="programme.imageFile"
+									type="button"
+									variant="outline"
+									@click="resetProgrammeImage(index)"
+								>
+									Reset
+								</Button>
+							</div>
+						</Field>
+					</div>
+				</FieldSet>
+
+				<FieldError v-if="error">{{ error }}</FieldError>
+
+				<Button type="submit" :disabled="isSaving">
+					{{ isSaving ? "Saving..." : isCreate ? "Create" : "Save" }}
+				</Button>
+			</FieldGroup>
+		</form>
+	</main>
+</template>
