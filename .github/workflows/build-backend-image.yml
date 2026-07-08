@@ -4,7 +4,10 @@ on:
   push:
     branches: [master]
     paths:
+      - "Dockerfile"
+      - ".dockerignore"
       - "ar-backend/**"
+      - "ar-admin/**"
       - ".github/workflows/build-backend-image.yml"
   workflow_dispatch:
 
@@ -40,8 +43,8 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
-          context: ./ar-backend
-          file: ./ar-backend/Dockerfile
+          context: .
+          file: ./Dockerfile
           push: true
           tags: ${{ env.IMAGE }}
           cache-from: type=gha,scope=backend

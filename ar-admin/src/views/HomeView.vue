@@ -39,11 +39,11 @@ function formatLocation(booth: Booth) {
 
 	return [
 		booth.location.building?.name,
-		booth.location.room,
 		booth.location.floor,
+		booth.location.room,
 	]
 		.filter(Boolean)
-		.join(" / ");
+		.join(" - ");
 }
 
 onMounted(async () => {
