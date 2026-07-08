@@ -34,7 +34,7 @@ buildingRouter.get("/:id", async (req, res) => {
 	const [booths, events] = locationIds.length
 		? await Promise.all([
 				Booth.find({ locationId: { $in: locationIds } }).sort({ priority: -1, name: 1 }).lean(),
-				Event.find({ locationId: { $in: locationIds } }).sort({ startsAt: 1, priority: -1 }).lean(),
+				Event.find({ locationId: { $in: locationIds } }).sort({ startsAt: 1 }).lean(),
 			])
 		: [[], []];
 	const boothsByLocation = groupByLocation(booths);

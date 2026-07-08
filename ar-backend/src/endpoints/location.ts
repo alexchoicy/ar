@@ -73,10 +73,6 @@ export function toEventOutput(event: any) {
 		startsAt: event.startsAt,
 		endsAt: event.endsAt,
 		imageUrl: getBlobUrl(event.imageObject),
-		category: event.category,
-		tags: event.tags,
-		isFeatured: event.isFeatured,
-		priority: event.priority,
 	};
 }
 
@@ -115,7 +111,7 @@ locationRouter.get("/:id", async (req, res) => {
 	const [location, booths, events] = await Promise.all([
 		Location.findById(req.params.id).lean(),
 		Booth.find({ locationId: req.params.id }).sort({ priority: -1, name: 1 }).lean(),
-		Event.find({ locationId: req.params.id }).sort({ startsAt: 1, priority: -1 }).lean(),
+		Event.find({ locationId: req.params.id }).sort({ startsAt: 1 }).lean(),
 	]);
 
 	if (!location) {

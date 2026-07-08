@@ -3,7 +3,6 @@ import createHttpError from "http-errors";
 import { Types } from "mongoose";
 import { z } from "zod";
 
-import { INTERESTS } from "../constants/student.js";
 import { Building } from "../db/schema/building.js";
 import { Event } from "../db/schema/event.js";
 import { Location } from "../db/schema/location.js";
@@ -25,10 +24,6 @@ const createEventInput = z.object({
 	imageFileName: z.string().min(1),
 	imageContentType: z.string().min(1).optional(),
 	imageSize: z.number().int().positive().optional(),
-	category: z.enum(INTERESTS),
-	tags: z.array(z.string()).default([]),
-	isFeatured: z.boolean().default(false),
-	priority: z.number().default(0),
 });
 
 function toEventOutput(event: any, location: any, building: any) {
@@ -57,15 +52,11 @@ function toEventOutput(event: any, location: any, building: any) {
 				}
 			: null,
 		imageUrl: getBlobUrl(event.imageObject),
-		category: event.category,
-		tags: event.tags,
-		isFeatured: event.isFeatured,
-		priority: event.priority,
 	};
 }
 
 eventRouter.get("/", async (_req, res) => {
-	const events = await Event.find().sort({ startsAt: 1, priority: -1 }).lean();
+	const events = await Event.find().sort({ startsAt: 1 }).lean();
 	const locations = await Location.find({
 		_id: { $in: events.map((event) => event.locationId) },
 	}).lean();
