@@ -8,7 +8,6 @@ const studentSchema = new Schema(
 		studentId: {
 			type: String,
 			required: true,
-			unique: true,
 			trim: true,
 			match: /^\d{8}$/,
 		},
@@ -40,6 +39,11 @@ const studentSchema = new Schema(
 		},
 	},
 	{ timestamps: true },
+);
+
+studentSchema.index(
+	{ studentId: 1 },
+	{ unique: true, partialFilterExpression: { studentId: { $ne: "00000000" } } },
 );
 
 export type StudentDocument = InferSchemaType<typeof studentSchema>;

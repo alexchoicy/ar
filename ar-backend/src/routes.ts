@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { authRouter } from "./endpoints/auth.js";
+import { adminAuthRouter, authRouter } from "./endpoints/auth.js";
 import { boothRouter } from "./endpoints/booth.js";
 import { buildingRouter } from "./endpoints/building.js";
 import { eventRouter } from "./endpoints/event.js";
@@ -12,6 +12,7 @@ export const routes = Router();
 const publicGetCache = cacheGet();
 
 routes.use("/api/auth", authRouter);
+routes.use("/api/admin", adminAuthRouter);
 routes.use("/api/booths", publicGetCache, boothRouter);
 routes.use("/api/buildings", publicGetCache, buildingRouter);
 routes.use("/api/events", publicGetCache, eventRouter);

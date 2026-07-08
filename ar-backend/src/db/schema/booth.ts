@@ -40,7 +40,6 @@ const boothSchema = new Schema(
 			],
 			default: [],
 		},
-		givesStamp: { type: Boolean, default: false },
 		qrCode: {
 			type: String,
 			default: function () {

@@ -62,7 +62,6 @@ export function toBoothOutput(booth: any) {
 			imageUrl: getBlobUrl(programme.imageObject),
 		})),
 		socialLinks: booth.socialLinks,
-		givesStamp: booth.givesStamp,
 	};
 }
 

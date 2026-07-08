@@ -201,10 +201,6 @@ userRouter.post(
 			throw createHttpError(404, "Booth not found");
 		}
 
-		if (!booth.givesStamp) {
-			throw createHttpError(400, "Booth does not give stamps");
-		}
-
 		const dateTime = new Date();
 		const stampedStudent = await Student.findOneAndUpdate(
 			{ _id: req.user?.sub, "eStamps.id": { $ne: booth._id } },
