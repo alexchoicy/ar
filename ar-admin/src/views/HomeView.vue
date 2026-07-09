@@ -74,6 +74,12 @@ function formatDateTime(value: string) {
 	return dateTimeFormatter.format(new Date(value));
 }
 
+function byRefId<T extends { refId?: string }>(a: T, b: T) {
+	return (a.refId || "~").localeCompare(b.refId || "~", undefined, {
+		numeric: true,
+	});
+}
+
 function fileName(value: string) {
 	return value.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "booth";
 }
@@ -192,8 +198,8 @@ onMounted(async () => {
 		if (!eventsResponse.ok)
 			throw new Error(eventsBody.error ?? "Failed to load events");
 
-		booths.value = boothsBody.data;
-		events.value = eventsBody.data;
+		booths.value = [...boothsBody.data].sort(byRefId);
+		events.value = [...eventsBody.data].sort(byRefId);
 	} catch (caught) {
 		error.value =
 			caught instanceof Error ? caught.message : "Failed to load records";
