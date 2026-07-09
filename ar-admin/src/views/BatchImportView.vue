@@ -658,7 +658,6 @@ async function importCards() {
 								Matched by exact filename from the workbook.
 							</FieldDescription>
 							<div
-								class="rounded-md border border-dashed p-4"
 								@dragover.prevent
 								@drop="dropImages"
 							>
