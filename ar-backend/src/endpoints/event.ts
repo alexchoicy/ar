@@ -142,21 +142,29 @@ eventRouter.put(
 			throw createHttpError(404, "Event not found");
 		}
 
+		const existingEvent = await Event.exists({ _id: id });
+
+		if (!existingEvent) {
+			throw createHttpError(404, "Event not found");
+		}
+
 		const { location, building } = await findOrCreateLocation(
 			req.body.buildingId,
 			req.body.floor,
 			req.body.room,
 		);
+		const $set: Record<string, unknown> = {
+			title: req.body.title,
+			description: req.body.description,
+			startsAt: req.body.startsAt,
+			endsAt: req.body.endsAt,
+			locationId: location._id,
+		};
+		if (req.body.refId) $set.refId = req.body.refId;
+
 		const event = await Event.findByIdAndUpdate(
 			id,
-			{
-				...(req.body.refId ? { refId: req.body.refId } : {}),
-				title: req.body.title,
-				description: req.body.description,
-				startsAt: req.body.startsAt,
-				endsAt: req.body.endsAt,
-				locationId: location._id,
-			},
+			req.body.refId ? { $set } : { $set, $unset: { refId: "" } },
 			{ new: true },
 		).lean();
 

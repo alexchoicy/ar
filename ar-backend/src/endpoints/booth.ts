@@ -25,7 +25,17 @@ const refIdInput = z.preprocess(
 	z.string().min(1).optional(),
 );
 
-const createBoothInput = z
+const programmeInput = z.object({
+	id: z
+		.string()
+		.refine(Types.ObjectId.isValid, "id must be a valid ObjectId")
+		.optional(),
+	title: z.string().min(1),
+	summary: z.string().min(1),
+	imageFileName: z.string().min(1),
+});
+
+const boothInput = z
 	.object({
 		refId: refIdInput,
 		name: z.string().min(1),
@@ -46,56 +56,59 @@ const createBoothInput = z
 				}),
 			)
 			.default([]),
-		programmes: z
-			.array(
-				z.object({
-					title: z.string().min(1),
-					summary: z.string().min(1),
-					imageFileName: z.string().min(1),
-				}),
-			)
-			.default([]),
+		programmes: z.array(programmeInput).default([]),
 	})
 	.refine(
 		(input) => input.startTime < input.endTime,
 		"startTime must be before endTime",
 	);
 
-const updateBoothInput = z
-	.object({
-		refId: refIdInput,
-		name: z.string().min(1),
-		overview: z.string().min(1),
-		category: z.enum(INTERESTS),
-		buildingId: z
-			.string()
-			.refine(Types.ObjectId.isValid, "buildingId must be a valid ObjectId"),
-		floor: z.string().default(""),
-		room: z.string().default(""),
-		startTime: z.string().min(1),
-		endTime: z.string().min(1),
-		socialLinks: z
-			.array(
-				z.object({
-					type: z.string().min(1),
-					url: z.string().url(),
-				}),
-			)
-			.default([]),
-		programmes: z
-			.array(
-				z.object({
-					title: z.string().min(1),
-					summary: z.string().min(1),
-					imageFileName: z.string().min(1),
-				}),
-			)
-			.default([]),
-	})
-	.refine(
-		(input) => input.startTime < input.endTime,
-		"startTime must be before endTime",
+function createProgrammeImageObject(
+	boothId: string,
+	programmeId: Types.ObjectId,
+	imageFileName: string,
+) {
+	return `booths/${boothId}/programmes/${programmeId.toString()}-${sanitizeBlobFileName(imageFileName)}`;
+}
+
+function buildProgrammes(
+	boothId: string,
+	inputs: z.infer<typeof programmeInput>[],
+	existingProgrammes: any[] = [],
+) {
+	const existingById = new Map(
+		existingProgrammes.map((programme) => [
+			programme._id?.toString(),
+			programme,
+		]),
 	);
+	const uploadObjects: Array<{ index: number; imageObject: string }> = [];
+	const programmes = inputs.map((programme, index) => {
+		const existing = programme.id ? existingById.get(programme.id) : undefined;
+		const programmeId = existing?._id ?? new Types.ObjectId();
+		const hasExistingImage =
+			existing?.imageFileName === programme.imageFileName;
+		const imageObject = hasExistingImage
+			? existing.imageObject
+			: createProgrammeImageObject(
+					boothId,
+					programmeId,
+					programme.imageFileName,
+				);
+
+		uploadObjects.push({ index, imageObject });
+
+		return {
+			_id: programmeId,
+			title: programme.title,
+			summary: programme.summary,
+			imageFileName: programme.imageFileName,
+			imageObject,
+		};
+	});
+
+	return { programmes, uploadObjects };
+}
 
 function toBoothDetailOutput(booth: any, location: any, building: any) {
 	return {
@@ -165,7 +178,7 @@ boothRouter.get("/:id", async (req, res) => {
 boothRouter.post(
 	"/",
 	requireAdmin,
-	validateBody(createBoothInput),
+	validateBody(boothInput),
 	async (req, res) => {
 		const boothId = new Types.ObjectId();
 		const { location, building } = await findOrCreateLocation(
@@ -173,17 +186,9 @@ boothRouter.post(
 			req.body.floor,
 			req.body.room,
 		);
-		const programmes = req.body.programmes.map(
-			(programme: any, index: number) => {
-				const programmeFileName = sanitizeBlobFileName(programme.imageFileName);
-
-				return {
-					title: programme.title,
-					summary: programme.summary,
-					imageFileName: programme.imageFileName,
-					imageObject: `booths/${boothId.toString()}/programmes/${index}-${programmeFileName}`,
-				};
-			},
+		const { programmes, uploadObjects } = buildProgrammes(
+			boothId.toString(),
+			req.body.programmes,
 		);
 		const booth = await Booth.create({
 			_id: boothId,
@@ -203,9 +208,9 @@ boothRouter.post(
 		return res.api(201, {
 			booth: toBoothDetailOutput(booth, location, building),
 			programmeUploadUrls: await Promise.all(
-				programmes.map(async (programme: any, index: number) => ({
-					index,
-					uploadUrl: await createUploadUrl(programme.imageObject),
+				uploadObjects.map(async (item) => ({
+					index: item.index,
+					uploadUrl: await createUploadUrl(item.imageObject),
 				})),
 			),
 		});
@@ -215,11 +220,17 @@ boothRouter.post(
 boothRouter.put(
 	"/:id",
 	requireAdmin,
-	validateBody(updateBoothInput),
+	validateBody(boothInput),
 	async (req, res) => {
 		const id = req.params.id as string;
 
 		if (!Types.ObjectId.isValid(id)) {
+			throw createHttpError(404, "Booth not found");
+		}
+
+		const existingBooth = await Booth.findById(id).lean();
+
+		if (!existingBooth) {
 			throw createHttpError(404, "Booth not found");
 		}
 
@@ -228,31 +239,26 @@ boothRouter.put(
 			req.body.floor,
 			req.body.room,
 		);
-		const programmes = req.body.programmes.map(
-			(programme: any, index: number) => {
-				const programmeFileName = sanitizeBlobFileName(programme.imageFileName);
-
-				return {
-					title: programme.title,
-					summary: programme.summary,
-					imageFileName: programme.imageFileName,
-					imageObject: `booths/${id}/programmes/${index}-${programmeFileName}`,
-				};
-			},
+		const { programmes, uploadObjects } = buildProgrammes(
+			id,
+			req.body.programmes,
+			existingBooth.programmes,
 		);
+		const $set: Record<string, unknown> = {
+			name: req.body.name,
+			overview: req.body.overview,
+			category: req.body.category,
+			locationId: location._id,
+			startTime: req.body.startTime,
+			endTime: req.body.endTime,
+			programmes,
+			socialLinks: req.body.socialLinks,
+		};
+		if (req.body.refId) $set.refId = req.body.refId;
+
 		const booth = await Booth.findByIdAndUpdate(
 			id,
-			{
-				...(req.body.refId ? { refId: req.body.refId } : {}),
-				name: req.body.name,
-				overview: req.body.overview,
-				category: req.body.category,
-				locationId: location._id,
-				startTime: req.body.startTime,
-				endTime: req.body.endTime,
-				programmes,
-				socialLinks: req.body.socialLinks,
-			},
+			req.body.refId ? { $set } : { $set, $unset: { refId: "" } },
 			{ new: true },
 		).lean();
 
@@ -265,9 +271,9 @@ boothRouter.put(
 		return res.api(200, {
 			booth: toBoothDetailOutput(booth, location, building),
 			programmeUploadUrls: await Promise.all(
-				programmes.map(async (programme: any, index: number) => ({
-					index,
-					uploadUrl: await createUploadUrl(programme.imageObject),
+				uploadObjects.map(async (item) => ({
+					index: item.index,
+					uploadUrl: await createUploadUrl(item.imageObject),
 				})),
 			),
 		});

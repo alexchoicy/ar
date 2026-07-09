@@ -59,6 +59,7 @@ export function toBoothOutput(booth: any) {
 		startTime: booth.startTime,
 		endTime: booth.endTime,
 		programmes: booth.programmes.map((programme: any) => ({
+			id: programme._id?.toString(),
 			title: programme.title,
 			summary: programme.summary,
 			imageFileName: programme.imageFileName,

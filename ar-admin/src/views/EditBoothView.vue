@@ -42,6 +42,7 @@ type BoothResponse = {
 	overview: string;
 	category: string;
 	programmes: Array<{
+		id?: string;
 		title: string;
 		summary: string;
 		imageFileName: string;
@@ -86,6 +87,7 @@ const selectedInterest = computed({
 });
 const programmes = ref<
 	Array<{
+		id: string;
 		title: string;
 		summary: string;
 		currentImageFileName: string;
@@ -140,6 +142,7 @@ onMounted(async () => {
 		form.startTime = booth.startTime;
 		form.endTime = booth.endTime;
 		programmes.value = booth.programmes.map((programme) => ({
+			id: programme.id ?? "",
 			title: programme.title,
 			summary: programme.summary,
 			currentImageFileName: programme.imageFileName,
@@ -164,6 +167,7 @@ onBeforeUnmount(() => {
 
 function addProgramme() {
 	programmes.value.push({
+		id: "",
 		title: "",
 		summary: "",
 		currentImageFileName: "",
@@ -223,8 +227,7 @@ function validateForm() {
 		(programme) =>
 			!programme.title.trim() ||
 			!programme.summary.trim() ||
-			(!programme.currentImageFileName && !programme.imageFile) ||
-			(!programme.currentImageUrl && !programme.imageFile),
+			(!programme.currentImageFileName && !programme.imageFile),
 	);
 
 	if (incompleteProgramme)
@@ -250,10 +253,12 @@ async function save() {
 				credentials: "include",
 				body: JSON.stringify({
 					...form,
-					socialLinks: SOCIAL_FIELDS
-						.map(({ name }) => ({ type: name, url: form[name] }))
-						.filter((link) => link.url.trim()),
+					socialLinks: SOCIAL_FIELDS.map(({ name }) => ({
+						type: name,
+						url: form[name],
+					})).filter((link) => link.url.trim()),
 					programmes: programmes.value.map((programme) => ({
+						...(programme.id ? { id: programme.id } : {}),
 						title: programme.title,
 						summary: programme.summary,
 						imageFileName:

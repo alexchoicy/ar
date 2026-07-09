@@ -17,7 +17,11 @@ import { Input } from "@/components/ui/input";
 import { INTERESTS_MAP, formatInterest } from "@/interests";
 import { fetchBuildings } from "@/lib/buildings";
 import type { Building } from "@/lib/buildings";
-import { SOCIAL_FIELDS, socialLabel, validateSocialLink } from "@/lib/social-links";
+import {
+	SOCIAL_FIELDS,
+	socialLabel,
+	validateSocialLink,
+} from "@/lib/social-links";
 import { uploadFile } from "@/lib/uploads";
 
 type Location = null | {
@@ -35,6 +39,7 @@ type CurrentBooth = {
 	startTime: string;
 	endTime: string;
 	programmes: Array<{
+		id?: string;
 		title: string;
 		summary: string;
 		imageFileName: string;
@@ -306,9 +311,10 @@ function parseBoothRow(row: Record<string, unknown>): ImportCard {
 		end: normalizeTime(row.end_time),
 		category: text(row.category),
 		programmes,
-		socialLinks: SOCIAL_FIELDS
-			.map(({ name }) => ({ type: name, url: text(row[name]) }))
-			.filter((link) => link.url),
+		socialLinks: SOCIAL_FIELDS.map(({ name }) => ({
+			type: name,
+			url: text(row[name]),
+		})).filter((link) => link.url),
 	};
 }
 
@@ -428,14 +434,11 @@ function validateCard(card: ImportCard) {
 				errors.push("Incomplete programme");
 				continue;
 			}
-			const existingImage =
-				(current as CurrentBooth | undefined)?.programmes[index]
-					?.imageFileName === programme.imageFileName;
+			const existingImageFileName = (current as CurrentBooth | undefined)
+				?.programmes[index]?.imageFileName;
+			const imageChanged = existingImageFileName !== programme.imageFileName;
 
-			if (
-				!existingImage &&
-				!imageFilesByName.value.has(programme.imageFileName)
-			)
+			if (imageChanged && !imageFilesByName.value.has(programme.imageFileName))
 				errors.push(`Missing image: ${programme.imageFileName}`);
 		}
 	}
@@ -529,6 +532,7 @@ async function saveImportRecord(
 }
 
 async function saveBooth(card: ImportCard) {
+	const current = currentBooths.value.find((item) => item.refId === card.refId);
 	const body = await saveImportRecord(
 		card,
 		card.existingId ? `/api/booths/${card.existingId}` : "/api/booths",
@@ -543,7 +547,12 @@ async function saveBooth(card: ImportCard) {
 			startTime: card.start,
 			endTime: card.end,
 			socialLinks: card.socialLinks,
-			programmes: card.programmes,
+			programmes: card.programmes.map((programme, index) => ({
+				...(current?.programmes[index]?.id
+					? { id: current.programmes[index].id }
+					: {}),
+				...programme,
+			})),
 		},
 	);
 
@@ -551,6 +560,8 @@ async function saveBooth(card: ImportCard) {
 		(body.data.programmeUploadUrls ?? []).map(
 			async (item: { index: number; uploadUrl: string }) => {
 				const fileName = card.programmes[item.index]?.imageFileName;
+				if (current?.programmes[item.index]?.imageFileName === fileName) return;
+
 				const file = fileName
 					? imageFilesByName.value.get(fileName)
 					: undefined;
