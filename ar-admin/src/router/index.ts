@@ -22,6 +22,14 @@ const router = createRouter({
 			path: "/booths/:id/edit",
 			component: () => import("@/views/EditBoothView.vue"),
 		},
+		{
+			path: "/events/new",
+			component: () => import("@/views/EditEventView.vue"),
+		},
+		{
+			path: "/events/:id/edit",
+			component: () => import("@/views/EditEventView.vue"),
+		},
 	],
 });
 

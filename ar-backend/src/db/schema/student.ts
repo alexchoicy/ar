@@ -43,7 +43,7 @@ const studentSchema = new Schema(
 
 studentSchema.index(
 	{ studentId: 1 },
-	{ unique: true, partialFilterExpression: { studentId: { $ne: "00000000" } } },
+	{ unique: true, partialFilterExpression: { studentId: { $gt: "00000000" } } },
 );
 
 export type StudentDocument = InferSchemaType<typeof studentSchema>;

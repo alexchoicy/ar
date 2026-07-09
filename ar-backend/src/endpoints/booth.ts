@@ -10,8 +10,13 @@ import { Location } from "../db/schema/location.js";
 import { requireAdmin } from "../middleware/auth.js";
 import { clearCache } from "../middleware/cache.js";
 import { validateBody } from "../middleware/validateBody.js";
-import { createUploadUrl } from "../utils/blob.js";
-import { toBuildingOutput, toBoothOutput } from "./location.js";
+import { createUploadUrl, sanitizeBlobFileName } from "../utils/blob.js";
+import { deleteRecordById } from "./helpers.js";
+import {
+	findOrCreateLocation,
+	toBoothOutput,
+	toLocationOutput,
+} from "./location.js";
 
 export const boothRouter = Router();
 
@@ -27,7 +32,6 @@ const createBoothInput = z
 		room: z.string().default(""),
 		startTime: z.string().min(1),
 		endTime: z.string().min(1),
-		imageFileName: z.string().min(1),
 		socialLinks: z
 			.array(
 				z.object({
@@ -63,7 +67,6 @@ const updateBoothInput = z
 		room: z.string().default(""),
 		startTime: z.string().min(1),
 		endTime: z.string().min(1),
-		imageFileName: z.string().min(1).optional(),
 		socialLinks: z
 			.array(
 				z.object({
@@ -90,15 +93,7 @@ const updateBoothInput = z
 function toBoothDetailOutput(booth: any, location: any, building: any) {
 	return {
 		...toBoothOutput(booth),
-		location: location
-			? {
-					id: location._id.toString(),
-					name: location.name,
-					floor: location.floor,
-					room: location.room,
-					building: building ? toBuildingOutput(building) : null,
-				}
-			: null,
+		location: location ? toLocationOutput(location, building) : null,
 	};
 }
 
@@ -113,23 +108,6 @@ async function getLocationAndBuilding(locationId: any) {
 		location,
 		building: await Building.findById(location.buildingId).lean(),
 	};
-}
-
-async function findOrCreateLocation(buildingId: string, floor = "", room = "") {
-	const building = await Building.findById(buildingId).lean();
-
-	if (!building) {
-		throw createHttpError(404, "Building not found");
-	}
-
-	const name = [building.name, floor, room].filter(Boolean).join(" - ");
-	const location = await Location.findOneAndUpdate(
-		{ buildingId, floor, room },
-		{ $setOnInsert: { buildingId, floor, room, name } },
-		{ new: true, upsert: true },
-	).lean();
-
-	return { location, building };
 }
 
 boothRouter.get("/", async (_req, res) => {
@@ -188,14 +166,9 @@ boothRouter.post(
 			req.body.floor,
 			req.body.room,
 		);
-		const fileName = req.body.imageFileName.replaceAll(/[^\w.-]/g, "_");
-		const imageObject = `booths/${boothId.toString()}/${fileName}`;
 		const programmes = req.body.programmes.map(
 			(programme: any, index: number) => {
-				const programmeFileName = programme.imageFileName.replaceAll(
-					/[^\w.-]/g,
-					"_",
-				);
+				const programmeFileName = sanitizeBlobFileName(programme.imageFileName);
 
 				return {
 					title: programme.title,
@@ -204,7 +177,6 @@ boothRouter.post(
 				};
 			},
 		);
-		const uploadUrl = await createUploadUrl(imageObject);
 		const booth = await Booth.create({
 			_id: boothId,
 			boothCode: `B-${boothId.toString().slice(-6).toUpperCase()}`,
@@ -214,7 +186,6 @@ boothRouter.post(
 			locationId: location._id,
 			startTime: req.body.startTime,
 			endTime: req.body.endTime,
-			imageObject,
 			programmes,
 			socialLinks: req.body.socialLinks,
 		});
@@ -222,7 +193,6 @@ boothRouter.post(
 
 		return res.api(201, {
 			booth: toBoothDetailOutput(booth, location, building),
-			uploadUrl,
 			programmeUploadUrls: await Promise.all(
 				programmes.map(async (programme: any, index: number) => ({
 					index,
@@ -249,9 +219,6 @@ boothRouter.put(
 			req.body.floor,
 			req.body.room,
 		);
-		const imageObject = req.body.imageFileName
-			? `booths/${id}/${req.body.imageFileName.replaceAll(/[^\w.-]/g, "_")}`
-			: undefined;
 		const existingBooth = await Booth.findById(id).lean();
 
 		if (!existingBooth) {
@@ -265,7 +232,7 @@ boothRouter.put(
 		const programmes = req.body.programmes.map(
 			(programme: any, index: number) => {
 				const programmeImageObject = programme.imageFileName
-					? `booths/${id}/programmes/${index}-${programme.imageFileName.replaceAll(/[^\w.-]/g, "_")}`
+					? `booths/${id}/programmes/${index}-${sanitizeBlobFileName(programme.imageFileName)}`
 					: existingBooth.programmes[index]?.imageObject;
 
 				if (!programmeImageObject) {
@@ -297,7 +264,6 @@ boothRouter.put(
 				endTime: req.body.endTime,
 				programmes,
 				socialLinks: req.body.socialLinks,
-				...(imageObject ? { imageObject } : {}),
 			},
 			{ new: true },
 		).lean();
@@ -310,7 +276,6 @@ boothRouter.put(
 
 		return res.api(200, {
 			booth: toBoothDetailOutput(booth, location, building),
-			...(imageObject ? { uploadUrl: await createUploadUrl(imageObject) } : {}),
 			programmeUploadUrls: await Promise.all(
 				programmeUploadObjects.map(async (item) => ({
 					index: item.index,
@@ -323,18 +288,7 @@ boothRouter.put(
 
 boothRouter.delete("/:id", requireAdmin, async (req, res) => {
 	const id = req.params.id as string;
-
-	if (!Types.ObjectId.isValid(id)) {
-		throw createHttpError(404, "Booth not found");
-	}
-
-	const booth = await Booth.findByIdAndDelete(id).lean();
-
-	if (!booth) {
-		throw createHttpError(404, "Booth not found");
-	}
-
-	clearCache();
+	await deleteRecordById(Booth, id, "Booth");
 
 	return res.api(200, { id });
 });

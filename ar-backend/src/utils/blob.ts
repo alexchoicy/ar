@@ -29,6 +29,10 @@ export async function createUploadUrl(blobName: string) {
 	});
 }
 
+export function sanitizeBlobFileName(fileName: string) {
+	return fileName.replaceAll(/[^\w.-]/g, "_");
+}
+
 export function getBlobUrl(blobName: string) {
 	const accountName = process.env.AZURE_STORAGE_BLOB_ACCOUNT_NAME;
 

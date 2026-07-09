@@ -20,6 +20,23 @@ const adminLoginInput = z.object({
 	password: z.string().min(1),
 });
 
+function assertAdminCredentials(name: string, password: string) {
+	if (
+		name !== process.env.ADMIN_NAME ||
+		password !== process.env.ADMIN_PASSWORD
+	) {
+		throw createHttpError(401, "Invalid credentials");
+	}
+}
+
+function toAdminUser(name: string) {
+	return {
+		id: name,
+		role: "admin",
+		name,
+	};
+}
+
 authRouter.post("/login", validateBody(loginInput), async (req, res) => {
 	const student = await Student.findOne(req.body);
 
@@ -28,7 +45,11 @@ authRouter.post("/login", validateBody(loginInput), async (req, res) => {
 	}
 
 	return res.api(200, {
-		token: signJwt({ sub: student.id, role: "student", studentId: student.studentId }),
+		token: signJwt({
+			sub: student.id,
+			role: "student",
+			studentId: student.studentId,
+		}),
 		user: {
 			id: student.id,
 			role: "student",
@@ -43,50 +64,30 @@ authRouter.post("/login", validateBody(loginInput), async (req, res) => {
 	});
 });
 
-authRouter.post("/login/admin", validateBody(adminLoginInput), async (req, res) => {
-	if (req.body.name !== process.env.ADMIN_NAME || req.body.password !== process.env.ADMIN_PASSWORD) {
-		throw createHttpError(401, "Invalid credentials");
-	}
+adminAuthRouter.post(
+	"/login",
+	validateBody(adminLoginInput),
+	async (req, res) => {
+		assertAdminCredentials(req.body.name, req.body.password);
 
-	return res.api(200, {
-		token: signJwt({ sub: req.body.name, role: "admin" }),
-		user: {
-			id: req.body.name,
-			role: "admin",
-			name: req.body.name,
-		},
-	});
-});
+		res.cookie(
+			adminAuthCookie,
+			signJwt({ sub: req.body.name, role: "admin" }),
+			{
+				httpOnly: true,
+				sameSite: "lax",
+				secure: process.env.NODE_ENV === "production",
+			},
+		);
 
-adminAuthRouter.post("/login", validateBody(adminLoginInput), async (req, res) => {
-	if (
-		req.body.name !== process.env.ADMIN_NAME ||
-		req.body.password !== process.env.ADMIN_PASSWORD
-	) {
-		throw createHttpError(401, "Invalid credentials");
-	}
-
-	res.cookie(adminAuthCookie, signJwt({ sub: req.body.name, role: "admin" }), {
-		httpOnly: true,
-		sameSite: "lax",
-		secure: process.env.NODE_ENV === "production",
-	});
-
-	return res.api(200, {
-		user: {
-			id: req.body.name,
-			role: "admin",
-			name: req.body.name,
-		},
-	});
-});
+		return res.api(200, {
+			user: toAdminUser(req.body.name),
+		});
+	},
+);
 
 adminAuthRouter.get("/me", requireAdmin, (req, res) =>
 	res.api(200, {
-		user: {
-			id: req.user!.sub,
-			role: "admin",
-			name: req.user!.sub,
-		},
+		user: toAdminUser(req.user!.sub),
 	}),
 );

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
+import { useRoute } from "vue-router";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +14,13 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatInterest } from "@/interests";
 
+type Location = null | {
+	name: string;
+	floor: string;
+	room: string;
+	building: null | { name: string };
+};
+
 type Booth = {
 	id: string;
 	boothCode: string;
@@ -20,67 +28,116 @@ type Booth = {
 	category: string;
 	startTime: string;
 	endTime: string;
-	location: null | {
-		name: string;
-		floor: string;
-		room: string;
-		building: null | { name: string };
-	};
+	location: Location;
 };
 
+type EventRecord = {
+	id: string;
+	title: string;
+	startsAt: string;
+	endsAt: string;
+	location: Location;
+};
+
+const route = useRoute();
 const booths = ref<Booth[]>([]);
+const events = ref<EventRecord[]>([]);
 const error = ref("");
 const isLoading = ref(true);
 const deletingId = ref("");
-const tab = ref("booths");
+const tab = ref(route.query.tab === "events" ? "events" : "booths");
+const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
+	dateStyle: "medium",
+	timeStyle: "short",
+});
 
-function formatLocation(booth: Booth) {
-	if (!booth.location) return "-";
+function formatLocation(item: { location: Location }) {
+	if (!item.location) return "-";
 
-	return [
-		booth.location.building?.name,
-		booth.location.floor,
-		booth.location.room,
-	]
+	return [item.location.building?.name, item.location.floor, item.location.room]
 		.filter(Boolean)
 		.join(" - ");
 }
 
+function formatDateTime(value: string) {
+	return dateTimeFormatter.format(new Date(value));
+}
+
 onMounted(async () => {
 	try {
-		const response = await fetch("/api/booths");
-		const body = await response.json();
+		const [boothsResponse, eventsResponse] = await Promise.all([
+			fetch("/api/booths"),
+			fetch("/api/events"),
+		]);
+		const [boothsBody, eventsBody] = await Promise.all([
+			boothsResponse.json(),
+			eventsResponse.json(),
+		]);
 
-		if (!response.ok) throw new Error(body.error ?? "Failed to load booths");
+		if (!boothsResponse.ok)
+			throw new Error(boothsBody.error ?? "Failed to load booths");
+		if (!eventsResponse.ok)
+			throw new Error(eventsBody.error ?? "Failed to load events");
 
-		booths.value = body.data;
+		booths.value = boothsBody.data;
+		events.value = eventsBody.data;
 	} catch (caught) {
 		error.value =
-			caught instanceof Error ? caught.message : "Failed to load booths";
+			caught instanceof Error ? caught.message : "Failed to load records";
 	} finally {
 		isLoading.value = false;
 	}
 });
 
 async function deleteBooth(booth: Booth) {
-	if (!window.confirm(`Delete ${booth.name}?`)) return;
+	await deleteRecord(
+		booth.id,
+		booth.name,
+		"booth",
+		`/api/booths/${booth.id}`,
+		() => {
+			booths.value = booths.value.filter((item) => item.id !== booth.id);
+		},
+	);
+}
 
-	deletingId.value = booth.id;
+async function deleteEvent(event: EventRecord) {
+	await deleteRecord(
+		event.id,
+		event.title,
+		"event",
+		`/api/events/${event.id}`,
+		() => {
+			events.value = events.value.filter((item) => item.id !== event.id);
+		},
+	);
+}
+
+async function deleteRecord(
+	id: string,
+	name: string,
+	label: string,
+	url: string,
+	remove: () => void,
+) {
+	if (!window.confirm(`Delete ${name}?`)) return;
+
+	const message = `Failed to delete ${label}`;
+	deletingId.value = id;
 	error.value = "";
 
 	try {
-		const response = await fetch(`/api/booths/${booth.id}`, {
+		const response = await fetch(url, {
 			method: "DELETE",
 			credentials: "include",
 		});
 		const body = await response.json();
 
-		if (!response.ok) throw new Error(body.error ?? "Failed to delete booth");
+		if (!response.ok) throw new Error(body.error ?? message);
 
-		booths.value = booths.value.filter((item) => item.id !== booth.id);
+		remove();
 	} catch (caught) {
-		error.value =
-			caught instanceof Error ? caught.message : "Failed to delete booth";
+		error.value = caught instanceof Error ? caught.message : message;
 	} finally {
 		deletingId.value = "";
 	}
@@ -162,9 +219,67 @@ async function deleteBooth(booth: Booth) {
 				</Table>
 			</section>
 
-			<section v-else class="flex flex-col gap-1">
-				<h1 class="text-2xl font-semibold tracking-tight">Events</h1>
-				<p class="text-sm text-muted-foreground">No event tools yet.</p>
+			<section v-else class="flex flex-col gap-4">
+				<header class="flex flex-col gap-1">
+					<div class="flex items-center justify-between gap-4">
+						<div class="flex flex-col gap-1">
+							<h1 class="text-2xl font-semibold tracking-tight">Events</h1>
+							<p class="text-sm text-muted-foreground">All event records.</p>
+						</div>
+
+						<Button as-child>
+							<RouterLink to="/events/new">Create event</RouterLink>
+						</Button>
+					</div>
+				</header>
+
+				<p v-if="isLoading" class="text-sm text-muted-foreground">
+					Loading events...
+				</p>
+				<p v-else-if="error" class="text-sm text-destructive">{{ error }}</p>
+				<p
+					v-else-if="events.length === 0"
+					class="text-sm text-muted-foreground"
+				>
+					No events yet.
+				</p>
+
+				<Table v-else>
+					<TableHeader>
+						<TableRow>
+							<TableHead>Title</TableHead>
+							<TableHead>Location</TableHead>
+							<TableHead>Starts</TableHead>
+							<TableHead>Ends</TableHead>
+							<TableHead class="text-right">Actions</TableHead>
+						</TableRow>
+					</TableHeader>
+					<TableBody>
+						<TableRow v-for="event in events" :key="event.id">
+							<TableCell class="font-medium">{{ event.title }}</TableCell>
+							<TableCell>{{ formatLocation(event) }}</TableCell>
+							<TableCell>{{ formatDateTime(event.startsAt) }}</TableCell>
+							<TableCell>{{ formatDateTime(event.endsAt) }}</TableCell>
+							<TableCell>
+								<div class="flex justify-end gap-2">
+									<Button size="sm" variant="outline" as-child>
+										<RouterLink :to="`/events/${event.id}/edit`"
+											>Edit</RouterLink
+										>
+									</Button>
+									<Button
+										size="sm"
+										variant="destructive"
+										:disabled="deletingId === event.id"
+										@click="deleteEvent(event)"
+									>
+										{{ deletingId === event.id ? "Deleting..." : "Delete" }}
+									</Button>
+								</div>
+							</TableCell>
+						</TableRow>
+					</TableBody>
+				</Table>
 			</section>
 		</div>
 	</main>

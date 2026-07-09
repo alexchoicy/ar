@@ -9,49 +9,45 @@ import { Location } from "../db/schema/location.js";
 import { requireAdmin } from "../middleware/auth.js";
 import { clearCache } from "../middleware/cache.js";
 import { validateBody } from "../middleware/validateBody.js";
-import { createUploadUrl, getBlobUrl } from "../utils/blob.js";
+import { deleteRecordById } from "./helpers.js";
+import {
+	findOrCreateLocation,
+	toEventOutput,
+	toLocationOutput,
+} from "./location.js";
 
 export const eventRouter = Router();
 
-const createEventInput = z.object({
+const eventInputShape = {
 	title: z.string().min(1),
 	description: z.string().min(1),
 	startsAt: z.coerce.date(),
 	endsAt: z.coerce.date(),
-	locationId: z
+	buildingId: z
 		.string()
-		.refine(Types.ObjectId.isValid, "locationId must be a valid ObjectId"),
-	imageFileName: z.string().min(1),
-	imageContentType: z.string().min(1).optional(),
-	imageSize: z.number().int().positive().optional(),
-});
+		.refine(Types.ObjectId.isValid, "buildingId must be a valid ObjectId"),
+	floor: z.string().default(""),
+	room: z.string().default(""),
+};
 
-function toEventOutput(event: any, location: any, building: any) {
+const createEventInput = z
+	.object(eventInputShape)
+	.refine(
+		(input) => input.startsAt < input.endsAt,
+		"startsAt must be before endsAt",
+	);
+
+const updateEventInput = z
+	.object(eventInputShape)
+	.refine(
+		(input) => input.startsAt < input.endsAt,
+		"startsAt must be before endsAt",
+	);
+
+function toEventDetailOutput(event: any, location: any, building: any) {
 	return {
-		id: event._id.toString(),
-		title: event.title,
-		description: event.description,
-		startsAt: event.startsAt,
-		endsAt: event.endsAt,
-		location: location
-			? {
-					id: location._id.toString(),
-					name: location.name,
-					floor: location.floor,
-					room: location.room,
-					building: building
-						? {
-								id: building._id.toString(),
-								name: building.name,
-								shortCode: building.shortCode,
-								campusZone: building.campusZone,
-								addressText: building.addressText,
-								geo: building.geo,
-							}
-						: null,
-				}
-			: null,
-		imageUrl: getBlobUrl(event.imageObject),
+		...toEventOutput(event),
+		location: location ? toLocationOutput(location, building) : null,
 	};
 }
 
@@ -72,10 +68,10 @@ eventRouter.get("/", async (_req, res) => {
 
 	return res.api(
 		200,
-			events.map((event) => {
+		events.map((event) => {
 			const location = locationsById.get(event.locationId.toString());
 
-			return toEventOutput(
+			return toEventDetailOutput(
 				event,
 				location,
 				location ? buildingsById.get(location.buildingId.toString()) : null,
@@ -96,9 +92,11 @@ eventRouter.get("/:id", async (req, res) => {
 	}
 
 	const location = await Location.findById(event.locationId).lean();
-	const building = location ? await Building.findById(location.buildingId).lean() : null;
+	const building = location
+		? await Building.findById(location.buildingId).lean()
+		: null;
 
-	return res.api(200, toEventOutput(event, location, building));
+	return res.api(200, toEventDetailOutput(event, location, building));
 });
 
 eventRouter.post(
@@ -106,30 +104,69 @@ eventRouter.post(
 	requireAdmin,
 	validateBody(createEventInput),
 	async (req, res) => {
-		const { imageFileName, imageContentType, imageSize, ...eventInput } =
-			req.body;
-		const location = await Location.findById(eventInput.locationId).lean();
-
-		if (!location) {
-			throw createHttpError(404, "Location not found");
-		}
-
-		const building = await Building.findById(location.buildingId).lean();
-		const eventId = new Types.ObjectId();
-		const fileName = imageFileName.replaceAll(/[^\w.-]/g, "_");
-		const imageObject = `events/${eventId.toString()}/${fileName}`;
-		const uploadUrl = await createUploadUrl(imageObject);
+		const { location, building } = await findOrCreateLocation(
+			req.body.buildingId,
+			req.body.floor,
+			req.body.room,
+		);
 		const event = await Event.create({
-			_id: eventId,
-			...eventInput,
-			imageObject,
+			title: req.body.title,
+			description: req.body.description,
+			startsAt: req.body.startsAt,
+			endsAt: req.body.endsAt,
+			locationId: location._id,
 		});
 		clearCache();
 
 		return res.api(201, {
-			event: toEventOutput(event, location, building),
-			uploadUrl,
-			fileName,
+			event: toEventDetailOutput(event, location, building),
 		});
 	},
 );
+
+eventRouter.put(
+	"/:id",
+	requireAdmin,
+	validateBody(updateEventInput),
+	async (req, res) => {
+		const id = req.params.id as string;
+
+		if (!Types.ObjectId.isValid(id)) {
+			throw createHttpError(404, "Event not found");
+		}
+
+		const { location, building } = await findOrCreateLocation(
+			req.body.buildingId,
+			req.body.floor,
+			req.body.room,
+		);
+		const event = await Event.findByIdAndUpdate(
+			id,
+			{
+				title: req.body.title,
+				description: req.body.description,
+				startsAt: req.body.startsAt,
+				endsAt: req.body.endsAt,
+				locationId: location._id,
+			},
+			{ new: true },
+		).lean();
+
+		if (!event) {
+			throw createHttpError(404, "Event not found");
+		}
+
+		clearCache();
+
+		return res.api(200, {
+			event: toEventDetailOutput(event, location, building),
+		});
+	},
+);
+
+eventRouter.delete("/:id", requireAdmin, async (req, res) => {
+	const id = req.params.id as string;
+	await deleteRecordById(Event, id, "Event");
+
+	return res.api(200, { id });
+});

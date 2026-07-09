@@ -16,12 +16,16 @@ export const locationRouter = Router();
 
 const createLocationInput = z.object({
 	name: z.string().min(1),
-	buildingId: z.string().refine(Types.ObjectId.isValid, "buildingId must be a valid ObjectId"),
+	buildingId: z
+		.string()
+		.refine(Types.ObjectId.isValid, "buildingId must be a valid ObjectId"),
 	floor: z.string().optional(),
 	room: z.string().optional(),
 });
 
-export function groupByLocation<T extends { locationId: { toString(): string } }>(items: T[]) {
+export function groupByLocation<
+	T extends { locationId: { toString(): string } },
+>(items: T[]) {
 	const grouped = new Map<string, T[]>();
 
 	for (const item of items) {
@@ -46,16 +50,12 @@ export function toBuildingOutput(building: any) {
 export function toBoothOutput(booth: any) {
 	return {
 		id: booth._id.toString(),
-		qrCode: booth.qrCode,
 		boothCode: booth.boothCode,
 		name: booth.name,
 		overview: booth.overview,
 		category: booth.category,
 		startTime: booth.startTime,
 		endTime: booth.endTime,
-		imageUrl: getBlobUrl(booth.imageObject),
-		tags: booth.tags,
-		priority: booth.priority,
 		programmes: booth.programmes.map((programme: any) => ({
 			title: programme.title,
 			summary: programme.summary,
@@ -72,17 +72,23 @@ export function toEventOutput(event: any) {
 		description: event.description,
 		startsAt: event.startsAt,
 		endsAt: event.endsAt,
-		imageUrl: getBlobUrl(event.imageObject),
 	};
 }
 
-export function toLocationOutput(location: any, building: any, booths?: any[], events?: any[]) {
+export function toLocationOutput(
+	location: any,
+	building: any,
+	booths?: any[],
+	events?: any[],
+) {
 	return {
 		id: location._id.toString(),
 		name: location.name,
 		floor: location.floor,
 		room: location.room,
-		...(building !== undefined ? { building: building ? toBuildingOutput(building) : null } : {}),
+		...(building !== undefined
+			? { building: building ? toBuildingOutput(building) : null }
+			: {}),
 		...(booths || events
 			? {
 					booths: (booths ?? []).map(toBoothOutput),
@@ -92,14 +98,44 @@ export function toLocationOutput(location: any, building: any, booths?: any[], e
 	};
 }
 
+export async function findOrCreateLocation(
+	buildingId: string,
+	floor = "",
+	room = "",
+) {
+	const building = await Building.findById(buildingId).lean();
+
+	if (!building) {
+		throw createHttpError(404, "Building not found");
+	}
+
+	const name = [building.name, floor, room].filter(Boolean).join(" - ");
+	const location = await Location.findOneAndUpdate(
+		{ buildingId, floor, room },
+		{ $setOnInsert: { buildingId, floor, room, name } },
+		{ new: true, upsert: true },
+	).lean();
+
+	return { location, building };
+}
+
 locationRouter.get("/", async (_req, res) => {
 	const locations = await Location.find().sort({ name: 1 }).lean();
-	const buildings = await Building.find({ _id: { $in: locations.map((location) => location.buildingId) } }).lean();
-	const buildingsById = new Map(buildings.map((building) => [building._id.toString(), building]));
+	const buildings = await Building.find({
+		_id: { $in: locations.map((location) => location.buildingId) },
+	}).lean();
+	const buildingsById = new Map(
+		buildings.map((building) => [building._id.toString(), building]),
+	);
 
 	return res.api(
 		200,
-		locations.map((location) => toLocationOutput(location, buildingsById.get(location.buildingId.toString()))),
+		locations.map((location) =>
+			toLocationOutput(
+				location,
+				buildingsById.get(location.buildingId.toString()),
+			),
+		),
 	);
 });
 
@@ -110,7 +146,9 @@ locationRouter.get("/:id", async (req, res) => {
 
 	const [location, booths, events] = await Promise.all([
 		Location.findById(req.params.id).lean(),
-		Booth.find({ locationId: req.params.id }).sort({ priority: -1, name: 1 }).lean(),
+		Booth.find({ locationId: req.params.id })
+			.sort({ priority: -1, name: 1 })
+			.lean(),
 		Event.find({ locationId: req.params.id }).sort({ startsAt: 1 }).lean(),
 	]);
 
@@ -123,21 +161,26 @@ locationRouter.get("/:id", async (req, res) => {
 	return res.api(200, toLocationOutput(location, building, booths, events));
 });
 
-locationRouter.post("/", requireAdmin, validateBody(createLocationInput), async (req, res) => {
-	const building = await Building.exists({ _id: req.body.buildingId });
+locationRouter.post(
+	"/",
+	requireAdmin,
+	validateBody(createLocationInput),
+	async (req, res) => {
+		const building = await Building.exists({ _id: req.body.buildingId });
 
-	if (!building) {
-		throw createHttpError(404, "Building not found");
-	}
+		if (!building) {
+			throw createHttpError(404, "Building not found");
+		}
 
-	const location = await Location.create(req.body);
-	clearCache();
+		const location = await Location.create(req.body);
+		clearCache();
 
-	return res.api(201, {
-		id: location.id,
-		name: location.name,
-		buildingId: location.buildingId.toString(),
-		floor: location.floor,
-		room: location.room,
-	});
-});
+		return res.api(201, {
+			id: location.id,
+			name: location.name,
+			buildingId: location.buildingId.toString(),
+			floor: location.floor,
+			room: location.room,
+		});
+	},
+);

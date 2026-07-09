@@ -18,7 +18,6 @@ const boothSchema = new Schema(
 		locationId: { type: Schema.Types.ObjectId, ref: "Location", required: true },
 		startTime: { type: String, required: true, trim: true },
 		endTime: { type: String, required: true, trim: true },
-		imageObject: { type: String, required: true, trim: true },
 		tags: { type: [String], default: [] },
 		priority: { type: Number, default: 0 },
 		programmes: {

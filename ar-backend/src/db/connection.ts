@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 
+import { Student } from "./schema/student.js";
+
 export async function connectDb() {
 	const connectionString = process.env.MONGO_CONNECTION_STRING;
 	const databaseName = process.env.MONGO_DATABASE_NAME;
@@ -13,4 +15,5 @@ export async function connectDb() {
 	}
 
 	await mongoose.connect(connectionString, { dbName: databaseName });
+	await Student.syncIndexes();
 }

@@ -8,7 +8,6 @@ const eventSchema = new Schema(
 		startsAt: { type: Date, required: true },
 		endsAt: { type: Date, required: true },
 		locationId: { type: Schema.Types.ObjectId, ref: "Location", required: true },
-		imageObject: { type: String, required: true, trim: true },
 	},
 	{ timestamps: true },
 );

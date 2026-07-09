@@ -15,7 +15,8 @@ function getCookie(req: Request, name: string) {
 
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
 	const [scheme, token] = req.header("authorization")?.split(" ") ?? [];
-	const authToken = scheme === "Bearer" ? token : getCookie(req, adminAuthCookie);
+	const authToken =
+		scheme === "Bearer" ? token : getCookie(req, adminAuthCookie);
 
 	if (!authToken) {
 		throw createHttpError(401, "Unauthorized");
@@ -30,9 +31,14 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
 	return next();
 }
 
-export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+function requireRole(
+	role: "admin" | "student",
+	req: Request,
+	res: Response,
+	next: NextFunction,
+) {
 	requireAuth(req, res, () => {
-		if (req.user?.role !== "admin") {
+		if (req.user?.role !== role) {
 			throw createHttpError(403, "Forbidden");
 		}
 
@@ -40,12 +46,14 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
 	});
 }
 
-export function requireStudent(req: Request, res: Response, next: NextFunction) {
-	requireAuth(req, res, () => {
-		if (req.user?.role !== "student") {
-			throw createHttpError(403, "Forbidden");
-		}
+export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+	return requireRole("admin", req, res, next);
+}
 
-		return next();
-	});
+export function requireStudent(
+	req: Request,
+	res: Response,
+	next: NextFunction,
+) {
+	return requireRole("student", req, res, next);
 }

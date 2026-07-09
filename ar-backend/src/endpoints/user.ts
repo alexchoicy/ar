@@ -108,12 +108,29 @@ function toUserOutput(student: {
 	};
 }
 
-userRouter.get("/me", requireAuth, async (req, res) => {
-	const student = await Student.findById(req.user?.sub);
+async function getCurrentStudent(userId: string | undefined) {
+	const student = await Student.findById(userId);
 
 	if (!student) {
 		throw createHttpError(404, "User not found");
 	}
+
+	return student;
+}
+
+function toggleSaved(savedItems: any[], id: string) {
+	const wasSaved = savedItems.some((savedItem) => savedItem.equals(id));
+
+	return {
+		isSaved: !wasSaved,
+		items: wasSaved
+			? savedItems.filter((savedItem) => !savedItem.equals(id))
+			: [...savedItems, id],
+	};
+}
+
+userRouter.get("/me", requireAuth, async (req, res) => {
+	const student = await getCurrentStudent(req.user?.sub);
 
 	return res.api(200, toUserOutput(student));
 });
@@ -129,24 +146,13 @@ userRouter.post(
 			throw createHttpError(404, "Event not found");
 		}
 
-		const student = await Student.findById(req.user?.sub);
-
-		if (!student) {
-			throw createHttpError(404, "User not found");
-		}
-
-		const isSaved = student.savedEvents.some((savedEvent) =>
-			savedEvent.equals(req.body.id),
-		);
-		student.savedEvents = isSaved
-			? student.savedEvents.filter(
-					(savedEvent) => !savedEvent.equals(req.body.id),
-				)
-			: [...student.savedEvents, req.body.id];
+		const student = await getCurrentStudent(req.user?.sub);
+		const saved = toggleSaved(student.savedEvents, req.body.id);
+		student.savedEvents = saved.items;
 		await student.save();
 
 		return res.api(200, {
-			isSaved: !isSaved,
+			isSaved: saved.isSaved,
 			savedEvents: student.savedEvents.map((savedEvent) =>
 				savedEvent.toString(),
 			),
@@ -165,24 +171,13 @@ userRouter.post(
 			throw createHttpError(404, "Booth not found");
 		}
 
-		const student = await Student.findById(req.user?.sub);
-
-		if (!student) {
-			throw createHttpError(404, "User not found");
-		}
-
-		const isSaved = student.savedBooths.some((savedBooth) =>
-			savedBooth.equals(req.body.id),
-		);
-		student.savedBooths = isSaved
-			? student.savedBooths.filter(
-					(savedBooth) => !savedBooth.equals(req.body.id),
-				)
-			: [...student.savedBooths, req.body.id];
+		const student = await getCurrentStudent(req.user?.sub);
+		const saved = toggleSaved(student.savedBooths, req.body.id);
+		student.savedBooths = saved.items;
 		await student.save();
 
 		return res.api(200, {
-			isSaved: !isSaved,
+			isSaved: saved.isSaved,
 			savedBooths: student.savedBooths.map((savedBooth) =>
 				savedBooth.toString(),
 			),

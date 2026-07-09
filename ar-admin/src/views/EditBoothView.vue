@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/combobox";
 import {
 	Field,
+	FieldDescription,
 	FieldError,
 	FieldGroup,
 	FieldLabel,
@@ -27,12 +28,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { INTERESTS_MAP } from "@/interests";
-
-type Building = {
-	id: string;
-	name: string;
-	shortCode: string;
-};
+import { fetchBuildings } from "@/lib/buildings";
+import type { Building } from "@/lib/buildings";
+import { getInputFile, replacePreviewUrl } from "@/lib/image-preview";
+import { uploadFile } from "@/lib/uploads";
 
 type BoothResponse = {
 	id: string;
@@ -40,7 +39,6 @@ type BoothResponse = {
 	name: string;
 	overview: string;
 	category: string;
-	imageUrl: string;
 	programmes: Array<{
 		title: string;
 		summary: string;
@@ -83,9 +81,6 @@ const selectedInterest = computed({
 		form.category = interest?.value ?? "";
 	},
 });
-const imageFile = ref<File | null>(null);
-const currentImageUrl = ref("");
-const previewImageUrl = ref("");
 const programmes = ref<
 	Array<{
 		title: string;
@@ -114,22 +109,17 @@ const form = reactive({
 });
 
 const socialFields = [
-	["social_instagram", "Instagram"],
-	["social_facebook", "Facebook"],
-	["social_youtube", "YouTube"],
-	["social_twitter", "Twitter"],
-	["social_rednote", "RedNote"],
-	["social_website", "Website"],
+	{ name: "social_instagram", label: "Instagram" },
+	{ name: "social_facebook", label: "Facebook" },
+	{ name: "social_youtube", label: "YouTube" },
+	{ name: "social_twitter", label: "Twitter" },
+	{ name: "social_rednote", label: "RedNote" },
+	{ name: "social_website", label: "Website" },
 ] as const;
 
 onMounted(async () => {
 	try {
-		const buildingsResponse = await fetch("/api/buildings");
-		const buildingsBody = await buildingsResponse.json();
-
-		if (!buildingsResponse.ok)
-			throw new Error(buildingsBody.error ?? "Failed to load buildings");
-		buildings.value = buildingsBody.data;
+		buildings.value = await fetchBuildings();
 
 		if (isCreate.value) return;
 
@@ -144,7 +134,6 @@ onMounted(async () => {
 		form.name = booth.name;
 		form.overview = booth.overview;
 		form.category = booth.category;
-		currentImageUrl.value = booth.imageUrl;
 		for (const link of booth.socialLinks) {
 			if (link.type in form) form[link.type as keyof typeof form] = link.url;
 		}
@@ -169,26 +158,11 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
-	if (previewImageUrl.value) URL.revokeObjectURL(previewImageUrl.value);
 	for (const programme of programmes.value) {
 		if (programme.previewImageUrl)
 			URL.revokeObjectURL(programme.previewImageUrl);
 	}
 });
-
-function selectImage(event: Event) {
-	const file = (event.target as HTMLInputElement).files?.[0] ?? null;
-
-	if (previewImageUrl.value) URL.revokeObjectURL(previewImageUrl.value);
-	imageFile.value = file;
-	previewImageUrl.value = file ? URL.createObjectURL(file) : "";
-}
-
-function resetImage() {
-	if (previewImageUrl.value) URL.revokeObjectURL(previewImageUrl.value);
-	imageFile.value = null;
-	previewImageUrl.value = "";
-}
 
 function addProgramme() {
 	programmes.value.push({
@@ -210,19 +184,23 @@ function selectProgrammeImage(index: number, event: Event) {
 	const programme = programmes.value[index];
 	if (!programme) return;
 
-	const file = (event.target as HTMLInputElement).files?.[0] ?? null;
-	if (programme.previewImageUrl) URL.revokeObjectURL(programme.previewImageUrl);
+	const file = getInputFile(event);
 	programme.imageFile = file;
-	programme.previewImageUrl = file ? URL.createObjectURL(file) : "";
+	programme.previewImageUrl = replacePreviewUrl(
+		programme.previewImageUrl,
+		file,
+	);
 }
 
 function resetProgrammeImage(index: number) {
 	const programme = programmes.value[index];
 	if (!programme) return;
 
-	if (programme.previewImageUrl) URL.revokeObjectURL(programme.previewImageUrl);
 	programme.imageFile = null;
-	programme.previewImageUrl = "";
+	programme.previewImageUrl = replacePreviewUrl(
+		programme.previewImageUrl,
+		null,
+	);
 }
 
 function validateForm() {
@@ -234,7 +212,6 @@ function validateForm() {
 	if (!form.endTime) return "End time is required.";
 	if (form.startTime >= form.endTime)
 		return "Start time must be before end time.";
-	if (isCreate.value && !imageFile.value) return "Image is required.";
 
 	const incompleteProgramme = programmes.value.find(
 		(programme) =>
@@ -266,9 +243,8 @@ async function save() {
 				credentials: "include",
 				body: JSON.stringify({
 					...form,
-					...(imageFile.value ? { imageFileName: imageFile.value.name } : {}),
 					socialLinks: socialFields
-						.map(([type]) => ({ type, url: form[type] }))
+						.map(({ name }) => ({ type: name, url: form[name] }))
 						.filter((link) => link.url.trim()),
 					programmes: programmes.value.map((programme) => ({
 						title: programme.title,
@@ -284,36 +260,17 @@ async function save() {
 
 		if (!response.ok) throw new Error(body.error ?? "Failed to save booth");
 
-		if (imageFile.value && body.data.uploadUrl) {
-			const uploadResponse = await fetch(body.data.uploadUrl, {
-				method: "PUT",
-				headers: {
-					"Content-Type": imageFile.value.type || "application/octet-stream",
-					"x-ms-blob-type": "BlockBlob",
-				},
-				body: imageFile.value,
-			});
-
-			if (!uploadResponse.ok) throw new Error("Failed to upload image");
-		}
-
 		await Promise.all(
 			(body.data.programmeUploadUrls ?? []).map(
 				async (item: { index: number; uploadUrl: string }) => {
 					const file = programmes.value[item.index]?.imageFile;
 					if (!file) return;
 
-					const uploadResponse = await fetch(item.uploadUrl, {
-						method: "PUT",
-						headers: {
-							"Content-Type": file.type || "application/octet-stream",
-							"x-ms-blob-type": "BlockBlob",
-						},
-						body: file,
-					});
-
-					if (!uploadResponse.ok)
-						throw new Error("Failed to upload programme image");
+					await uploadFile(
+						item.uploadUrl,
+						file,
+						"Failed to upload programme image",
+					);
 				},
 			),
 		);
@@ -413,40 +370,6 @@ async function save() {
 					</FieldGroup>
 				</FieldSet>
 
-				<FieldSeparator />
-
-				<FieldSet>
-					<FieldLegend>Image</FieldLegend>
-					<Field>
-						<FieldLabel for="image">Booth image</FieldLabel>
-						<img
-							v-if="previewImageUrl || currentImageUrl"
-							:src="previewImageUrl || currentImageUrl"
-							:alt="form.name"
-							class="h-40 w-full rounded-md border object-cover"
-						/>
-						<div class="flex gap-2">
-							<Input
-								id="image"
-								type="file"
-								accept="image/*"
-								:required="isCreate"
-								@change="selectImage"
-							/>
-							<Button
-								v-if="imageFile"
-								type="button"
-								variant="outline"
-								@click="resetImage"
-							>
-								Reset
-							</Button>
-						</div>
-					</Field>
-				</FieldSet>
-
-				<FieldSeparator />
-
 				<FieldSet>
 					<FieldLegend>Location & Time</FieldLegend>
 					<FieldGroup>
@@ -531,9 +454,9 @@ async function save() {
 				<FieldSet>
 					<FieldLegend>Social Links</FieldLegend>
 					<div class="grid gap-4 sm:grid-cols-2">
-						<Field v-for="[field, label] in socialFields" :key="field">
-							<FieldLabel :for="field">{{ label }}</FieldLabel>
-							<Input :id="field" v-model="form[field]" type="url" />
+						<Field v-for="field in socialFields" :key="field.name">
+							<FieldLabel :for="field.name">{{ field.label }}</FieldLabel>
+							<Input :id="field.name" v-model="form[field.name]" type="url" />
 						</Field>
 					</div>
 				</FieldSet>
@@ -586,11 +509,14 @@ async function save() {
 
 						<Field>
 							<FieldLabel :for="`programme-image-${index}`">Image</FieldLabel>
+							<FieldDescription>
+								Preferred 16:9. Recommended size: 1920x1080.
+							</FieldDescription>
 							<img
 								v-if="programme.previewImageUrl || programme.currentImageUrl"
 								:src="programme.previewImageUrl || programme.currentImageUrl"
 								:alt="programme.title"
-								class="h-40 w-full rounded-md border object-cover"
+								class="aspect-video w-full rounded-md border object-cover"
 							/>
 							<div class="flex gap-2">
 								<Input
