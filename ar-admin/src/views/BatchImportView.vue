@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { INTERESTS_MAP, formatInterest } from "@/interests";
 import { fetchBuildings } from "@/lib/buildings";
 import type { Building } from "@/lib/buildings";
+import { SOCIAL_FIELDS, socialLabel, validateSocialLink } from "@/lib/social-links";
 import { uploadFile } from "@/lib/uploads";
 
 type Location = null | {
@@ -80,15 +81,6 @@ type ImportCard = {
 	diff: string[];
 };
 
-const socialFields = [
-	"social_instagram",
-	"social_facebook",
-	"social_youtube",
-	"social_twitter",
-	"social_rednote",
-	"social_website",
-] as const;
-
 const router = useRouter();
 const buildings = ref<Building[]>([]);
 const currentBooths = ref<CurrentBooth[]>([]);
@@ -121,6 +113,10 @@ const hktDateTimeFormatter = new Intl.DateTimeFormat(undefined, {
 });
 
 onMounted(async () => {
+	await loadImportData();
+});
+
+async function loadImportData() {
 	try {
 		const [loadedBuildings, boothsResponse, eventsResponse] = await Promise.all(
 			[fetchBuildings(), fetch("/api/booths"), fetch("/api/events")],
@@ -144,7 +140,7 @@ onMounted(async () => {
 	} finally {
 		isLoading.value = false;
 	}
-});
+}
 
 function text(value: unknown) {
 	return String(value ?? "")
@@ -175,8 +171,34 @@ function comparableDateTime(value: string) {
 	return Number.isNaN(date.getTime()) ? value : date.toISOString();
 }
 
+function isValidTime(value: string) {
+	const match = value.match(/^(\d{2}):(\d{2})$/);
+	if (!match) return false;
+
+	const hours = Number(match[1]);
+	const minutes = Number(match[2]);
+	return hours < 24 && minutes < 60;
+}
+
+function isValidDateTime(value: string) {
+	return Boolean(value) && !Number.isNaN(new Date(value).getTime());
+}
+
+function hasValidStartAndEnd(card: ImportCard) {
+	return card.kind === "booth"
+		? isValidTime(card.start) && isValidTime(card.end)
+		: isValidDateTime(card.start) && isValidDateTime(card.end);
+}
+
+function startsBeforeEnd(card: ImportCard) {
+	return card.kind === "booth"
+		? card.start < card.end
+		: new Date(card.start).getTime() < new Date(card.end).getTime();
+}
+
 function displayTime(card: ImportCard) {
-	if (card.kind === "booth") return `${card.start} - ${card.end}`;
+	if (card.kind === "booth" || !hasValidStartAndEnd(card))
+		return `${card.start || "-"} - ${card.end || "-"}`;
 
 	return `${hktDateTimeFormatter.format(new Date(card.start))} - ${hktDateTimeFormatter.format(new Date(card.end))}`;
 }
@@ -192,10 +214,6 @@ function statusClass(status: ImportStatus) {
 		invalid: "border-destructive/30 bg-destructive/10 text-destructive",
 		same: "border-muted bg-muted text-muted-foreground",
 	}[status];
-}
-
-function socialLabel(type: string) {
-	return type.replace("social_", "").replaceAll("_", " ");
 }
 
 function sameJson(left: unknown, right: unknown) {
@@ -288,8 +306,8 @@ function parseBoothRow(row: Record<string, unknown>): ImportCard {
 		end: normalizeTime(row.end_time),
 		category: text(row.category),
 		programmes,
-		socialLinks: socialFields
-			.map((field) => ({ type: field, url: text(row[field]) }))
+		socialLinks: SOCIAL_FIELDS
+			.map(({ name }) => ({ type: name, url: text(row[name]) }))
 			.filter((link) => link.url),
 	};
 }
@@ -313,8 +331,12 @@ function boothSnapshot(card: ImportCard) {
 		endTime: card.end,
 		category: card.category,
 		programmes: card.programmes,
-		socialLinks: card.socialLinks,
+		socialLinks: socialLinksSnapshot(card.socialLinks),
 	};
+}
+
+function socialLinksSnapshot(links: Array<{ type: string; url: string }>) {
+	return links.map(({ type, url }) => ({ type, url }));
 }
 
 function currentBoothSnapshot(booth: CurrentBooth) {
@@ -332,7 +354,7 @@ function currentBoothSnapshot(booth: CurrentBooth) {
 			summary,
 			imageFileName,
 		})),
-		socialLinks: booth.socialLinks,
+		socialLinks: socialLinksSnapshot(booth.socialLinks),
 	};
 }
 
@@ -376,15 +398,27 @@ function validateCard(card: ImportCard) {
 		card.kind === "booth"
 			? currentBooths.value.find((item) => item.refId === card.refId)
 			: currentEvents.value.find((item) => item.refId === card.refId);
+	const hasValidStart =
+		card.kind === "booth"
+			? isValidTime(card.start)
+			: isValidDateTime(card.start);
+	const hasValidEnd =
+		card.kind === "booth" ? isValidTime(card.end) : isValidDateTime(card.end);
 
 	if (!card.refId) errors.push("Missing code");
 	if (!card.name) errors.push("Missing name");
 	if (!card.overview) errors.push("Missing description");
 	if (!building) errors.push(`Unknown building: ${card.buildingCode || "-"}`);
 	if (!card.start) errors.push("Missing start time");
+	else if (!hasValidStart) errors.push("Invalid start time");
 	if (!card.end) errors.push("Missing end time");
-	if (card.start && card.end && card.start >= card.end)
+	else if (!hasValidEnd) errors.push("Invalid end time");
+	if (hasValidStart && hasValidEnd && !startsBeforeEnd(card))
 		errors.push("Start time must be before end time");
+	for (const link of card.socialLinks) {
+		const linkError = validateSocialLink(link.type, link.url);
+		if (linkError) errors.push(linkError);
+	}
 
 	if (card.kind === "booth") {
 		if (!(card.category in INTERESTS_MAP))
@@ -552,6 +586,7 @@ async function importCards() {
 	isImporting.value = true;
 	error.value = "";
 	message.value = "";
+	const importedCount = importableCards.value.length;
 
 	try {
 		for (const card of importableCards.value) {
@@ -559,7 +594,9 @@ async function importCards() {
 			else await saveEvent(card);
 		}
 
-		message.value = `Imported ${importableCards.value.length} records.`;
+		await loadImportData();
+		revalidateCards();
+		message.value = `Imported ${importedCount} records.`;
 		cards.value = cards.value.filter((card) => card.status === "same");
 	} catch (caught) {
 		error.value = caught instanceof Error ? caught.message : "Import failed";
@@ -726,7 +763,10 @@ async function importCards() {
 								</div>
 							</div>
 
-							<div v-if="card.socialLinks.length" class="grid gap-2 border-t pt-3">
+							<div
+								v-if="card.socialLinks.length"
+								class="grid gap-2 border-t pt-3"
+							>
 								<h4 class="text-xs font-medium uppercase text-muted-foreground">
 									Social links
 								</h4>
@@ -739,7 +779,9 @@ async function importCards() {
 										<span class="capitalize text-muted-foreground">
 											{{ socialLabel(link.type) }}
 										</span>
-										<span class="break-all font-mono text-xs">{{ link.url }}</span>
+										<span class="break-all font-mono text-xs">{{
+											link.url
+										}}</span>
 									</div>
 								</div>
 							</div>

@@ -31,6 +31,7 @@ import { INTERESTS_MAP } from "@/interests";
 import { fetchBuildings } from "@/lib/buildings";
 import type { Building } from "@/lib/buildings";
 import { getInputFile, replacePreviewUrl } from "@/lib/image-preview";
+import { SOCIAL_FIELDS, validateSocialLink } from "@/lib/social-links";
 import { uploadFile } from "@/lib/uploads";
 
 type BoothResponse = {
@@ -111,15 +112,6 @@ const form = reactive({
 	social_rednote: "",
 	social_website: "",
 });
-
-const socialFields = [
-	{ name: "social_instagram", label: "Instagram" },
-	{ name: "social_facebook", label: "Facebook" },
-	{ name: "social_youtube", label: "YouTube" },
-	{ name: "social_twitter", label: "Twitter" },
-	{ name: "social_rednote", label: "RedNote" },
-	{ name: "social_website", label: "Website" },
-] as const;
 
 onMounted(async () => {
 	try {
@@ -220,6 +212,13 @@ function validateForm() {
 	if (form.startTime >= form.endTime)
 		return "Start time must be before end time.";
 
+	for (const field of SOCIAL_FIELDS) {
+		const socialError = form[field.name].trim()
+			? validateSocialLink(field.name, form[field.name])
+			: "";
+		if (socialError) return socialError;
+	}
+
 	const incompleteProgramme = programmes.value.find(
 		(programme) =>
 			!programme.title.trim() ||
@@ -251,7 +250,7 @@ async function save() {
 				credentials: "include",
 				body: JSON.stringify({
 					...form,
-					socialLinks: socialFields
+					socialLinks: SOCIAL_FIELDS
 						.map(({ name }) => ({ type: name, url: form[name] }))
 						.filter((link) => link.url.trim()),
 					programmes: programmes.value.map((programme) => ({
@@ -469,7 +468,7 @@ async function save() {
 				<FieldSet>
 					<FieldLegend>Social Links</FieldLegend>
 					<div class="grid gap-4 sm:grid-cols-2">
-						<Field v-for="field in socialFields" :key="field.name">
+						<Field v-for="field in SOCIAL_FIELDS" :key="field.name">
 							<FieldLabel :for="field.name">{{ field.label }}</FieldLabel>
 							<Input :id="field.name" v-model="form[field.name]" type="url" />
 						</Field>
