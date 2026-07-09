@@ -50,15 +50,18 @@ export function toBuildingOutput(building: any) {
 export function toBoothOutput(booth: any) {
 	return {
 		id: booth._id.toString(),
+		refId: booth.refId,
 		boothCode: booth.boothCode,
 		name: booth.name,
 		overview: booth.overview,
 		category: booth.category,
+		qrCode: booth.qrCode,
 		startTime: booth.startTime,
 		endTime: booth.endTime,
 		programmes: booth.programmes.map((programme: any) => ({
 			title: programme.title,
 			summary: programme.summary,
+			imageFileName: programme.imageFileName,
 			imageUrl: getBlobUrl(programme.imageObject),
 		})),
 		socialLinks: booth.socialLinks,
@@ -68,6 +71,7 @@ export function toBoothOutput(booth: any) {
 export function toEventOutput(event: any) {
 	return {
 		id: event._id.toString(),
+		refId: event.refId,
 		title: event.title,
 		description: event.description,
 		startsAt: event.startsAt,

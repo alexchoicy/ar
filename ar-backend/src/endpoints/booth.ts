@@ -20,8 +20,14 @@ import {
 
 export const boothRouter = Router();
 
+const refIdInput = z.preprocess(
+	(value) => (value === "" ? undefined : value),
+	z.string().min(1).optional(),
+);
+
 const createBoothInput = z
 	.object({
+		refId: refIdInput,
 		name: z.string().min(1),
 		overview: z.string().min(1),
 		category: z.enum(INTERESTS),
@@ -57,6 +63,7 @@ const createBoothInput = z
 
 const updateBoothInput = z
 	.object({
+		refId: refIdInput,
 		name: z.string().min(1),
 		overview: z.string().min(1),
 		category: z.enum(INTERESTS),
@@ -80,7 +87,7 @@ const updateBoothInput = z
 				z.object({
 					title: z.string().min(1),
 					summary: z.string().min(1),
-					imageFileName: z.string().min(1).optional(),
+					imageFileName: z.string().min(1),
 				}),
 			)
 			.default([]),
@@ -173,12 +180,14 @@ boothRouter.post(
 				return {
 					title: programme.title,
 					summary: programme.summary,
+					imageFileName: programme.imageFileName,
 					imageObject: `booths/${boothId.toString()}/programmes/${index}-${programmeFileName}`,
 				};
 			},
 		);
 		const booth = await Booth.create({
 			_id: boothId,
+			...(req.body.refId ? { refId: req.body.refId } : {}),
 			boothCode: `B-${boothId.toString().slice(-6).toUpperCase()}`,
 			name: req.body.name,
 			overview: req.body.overview,
@@ -219,43 +228,22 @@ boothRouter.put(
 			req.body.floor,
 			req.body.room,
 		);
-		const existingBooth = await Booth.findById(id).lean();
-
-		if (!existingBooth) {
-			throw createHttpError(404, "Booth not found");
-		}
-
-		const programmeUploadObjects: Array<{
-			index: number;
-			imageObject: string;
-		}> = [];
 		const programmes = req.body.programmes.map(
 			(programme: any, index: number) => {
-				const programmeImageObject = programme.imageFileName
-					? `booths/${id}/programmes/${index}-${sanitizeBlobFileName(programme.imageFileName)}`
-					: existingBooth.programmes[index]?.imageObject;
-
-				if (!programmeImageObject) {
-					throw createHttpError(400, "Programme image is required");
-				}
-
-				if (programme.imageFileName) {
-					programmeUploadObjects.push({
-						index,
-						imageObject: programmeImageObject,
-					});
-				}
+				const programmeFileName = sanitizeBlobFileName(programme.imageFileName);
 
 				return {
 					title: programme.title,
 					summary: programme.summary,
-					imageObject: programmeImageObject,
+					imageFileName: programme.imageFileName,
+					imageObject: `booths/${id}/programmes/${index}-${programmeFileName}`,
 				};
 			},
 		);
 		const booth = await Booth.findByIdAndUpdate(
 			id,
 			{
+				...(req.body.refId ? { refId: req.body.refId } : {}),
 				name: req.body.name,
 				overview: req.body.overview,
 				category: req.body.category,
@@ -277,9 +265,9 @@ boothRouter.put(
 		return res.api(200, {
 			booth: toBoothDetailOutput(booth, location, building),
 			programmeUploadUrls: await Promise.all(
-				programmeUploadObjects.map(async (item) => ({
-					index: item.index,
-					uploadUrl: await createUploadUrl(item.imageObject),
+				programmes.map(async (programme: any, index: number) => ({
+					index,
+					uploadUrl: await createUploadUrl(programme.imageObject),
 				})),
 			),
 		});

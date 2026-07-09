@@ -18,7 +18,13 @@ import {
 
 export const eventRouter = Router();
 
+const refIdInput = z.preprocess(
+	(value) => (value === "" ? undefined : value),
+	z.string().min(1).optional(),
+);
+
 const eventInputShape = {
+	refId: refIdInput,
 	title: z.string().min(1),
 	description: z.string().min(1),
 	startsAt: z.coerce.date(),
@@ -110,6 +116,7 @@ eventRouter.post(
 			req.body.room,
 		);
 		const event = await Event.create({
+			...(req.body.refId ? { refId: req.body.refId } : {}),
 			title: req.body.title,
 			description: req.body.description,
 			startsAt: req.body.startsAt,
@@ -143,6 +150,7 @@ eventRouter.put(
 		const event = await Event.findByIdAndUpdate(
 			id,
 			{
+				...(req.body.refId ? { refId: req.body.refId } : {}),
 				title: req.body.title,
 				description: req.body.description,
 				startsAt: req.body.startsAt,

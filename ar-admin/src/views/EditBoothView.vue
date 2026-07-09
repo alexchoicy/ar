@@ -35,6 +35,7 @@ import { uploadFile } from "@/lib/uploads";
 
 type BoothResponse = {
 	id: string;
+	refId?: string;
 	boothCode: string;
 	name: string;
 	overview: string;
@@ -42,6 +43,7 @@ type BoothResponse = {
 	programmes: Array<{
 		title: string;
 		summary: string;
+		imageFileName: string;
 		imageUrl: string;
 	}>;
 	socialLinks: Array<{
@@ -85,12 +87,14 @@ const programmes = ref<
 	Array<{
 		title: string;
 		summary: string;
+		currentImageFileName: string;
 		currentImageUrl: string;
 		previewImageUrl: string;
 		imageFile: File | null;
 	}>
 >([]);
 const form = reactive({
+	refId: "",
 	boothCode: "",
 	name: "",
 	overview: "",
@@ -130,6 +134,7 @@ onMounted(async () => {
 			throw new Error(boothBody.error ?? "Failed to load booth");
 
 		const booth = boothBody.data as BoothResponse;
+		form.refId = booth.refId ?? "";
 		form.boothCode = booth.boothCode;
 		form.name = booth.name;
 		form.overview = booth.overview;
@@ -145,6 +150,7 @@ onMounted(async () => {
 		programmes.value = booth.programmes.map((programme) => ({
 			title: programme.title,
 			summary: programme.summary,
+			currentImageFileName: programme.imageFileName,
 			currentImageUrl: programme.imageUrl,
 			previewImageUrl: "",
 			imageFile: null,
@@ -168,6 +174,7 @@ function addProgramme() {
 	programmes.value.push({
 		title: "",
 		summary: "",
+		currentImageFileName: "",
 		currentImageUrl: "",
 		previewImageUrl: "",
 		imageFile: null,
@@ -217,6 +224,7 @@ function validateForm() {
 		(programme) =>
 			!programme.title.trim() ||
 			!programme.summary.trim() ||
+			(!programme.currentImageFileName && !programme.imageFile) ||
 			(!programme.currentImageUrl && !programme.imageFile),
 	);
 
@@ -249,9 +257,8 @@ async function save() {
 					programmes: programmes.value.map((programme) => ({
 						title: programme.title,
 						summary: programme.summary,
-						...(programme.imageFile
-							? { imageFileName: programme.imageFile.name }
-							: {}),
+						imageFileName:
+							programme.imageFile?.name ?? programme.currentImageFileName,
 					})),
 				}),
 			},
@@ -312,6 +319,14 @@ async function save() {
 				<FieldSet>
 					<FieldLegend>Details</FieldLegend>
 					<FieldGroup>
+						<Field>
+							<FieldLabel for="ref-id">Ref ID</FieldLabel>
+							<Input id="ref-id" v-model="form.refId" />
+							<FieldDescription>
+								Unique ID used by Excel batch import to update this record.
+							</FieldDescription>
+						</Field>
+
 						<Field v-if="!isCreate">
 							<FieldLabel for="booth-code">Code</FieldLabel>
 							<Input

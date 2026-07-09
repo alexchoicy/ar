@@ -3,6 +3,7 @@ import type { InferSchemaType } from "mongoose";
 
 const eventSchema = new Schema(
 	{
+		refId: { type: String, trim: true },
 		title: { type: String, required: true, trim: true },
 		description: { type: String, required: true, trim: true },
 		startsAt: { type: Date, required: true },
@@ -12,6 +13,7 @@ const eventSchema = new Schema(
 	{ timestamps: true },
 );
 
+eventSchema.index({ refId: 1 }, { unique: true, sparse: true });
 eventSchema.index({ startsAt: 1 });
 eventSchema.index({ locationId: 1, startsAt: 1 });
 

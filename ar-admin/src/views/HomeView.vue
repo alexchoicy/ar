@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { PDFFont } from "pdf-lib";
 import { onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 
@@ -18,14 +19,16 @@ type Location = null | {
 	name: string;
 	floor: string;
 	room: string;
-	building: null | { name: string };
+	building: null | { name: string; shortCode?: string; shortName?: string };
 };
 
 type Booth = {
 	id: string;
+	refId?: string;
 	boothCode: string;
 	name: string;
 	category: string;
+	qrCode: string;
 	startTime: string;
 	endTime: string;
 	location: Location;
@@ -33,6 +36,7 @@ type Booth = {
 
 type EventRecord = {
 	id: string;
+	refId?: string;
 	title: string;
 	startsAt: string;
 	endsAt: string;
@@ -45,6 +49,7 @@ const events = ref<EventRecord[]>([]);
 const error = ref("");
 const isLoading = ref(true);
 const deletingId = ref("");
+const isDownloadingQrZip = ref(false);
 const tab = ref(route.query.tab === "events" ? "events" : "booths");
 const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
 	dateStyle: "medium",
@@ -54,13 +59,121 @@ const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
 function formatLocation(item: { location: Location }) {
 	if (!item.location) return "-";
 
-	return [item.location.building?.name, item.location.floor, item.location.room]
+	return [
+		item.location.building?.shortName ??
+			item.location.building?.shortCode ??
+			item.location.building?.name,
+		item.location.floor,
+		item.location.room,
+	]
 		.filter(Boolean)
 		.join(" - ");
 }
 
 function formatDateTime(value: string) {
 	return dateTimeFormatter.format(new Date(value));
+}
+
+function fileName(value: string) {
+	return value.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "booth";
+}
+
+function wrapText(text: string, font: PDFFont, size: number, maxWidth: number) {
+	const lines: string[] = [];
+	let line = "";
+
+	for (const word of text.split(/\s+/)) {
+		const next = [line, word].filter(Boolean).join(" ");
+		if (font.widthOfTextAtSize(next, size) <= maxWidth) {
+			line = next;
+		} else {
+			if (line) lines.push(line);
+			line = word;
+		}
+	}
+
+	return [...lines, line].filter(Boolean);
+}
+
+async function dataUrlBytes(dataUrl: string) {
+	return new Uint8Array(await (await fetch(dataUrl)).arrayBuffer());
+}
+
+async function createBoothQrPdf(booth: Booth) {
+	const [{ default: QRCode }, { PDFDocument, StandardFonts }] =
+		await Promise.all([import("qrcode"), import("pdf-lib")]);
+	const qrDataUrl = await QRCode.toDataURL(booth.qrCode, {
+		errorCorrectionLevel: "H",
+		margin: 2,
+		width: 1600,
+	});
+	const pdf = await PDFDocument.create();
+	const page = pdf.addPage([595.28, 841.89]);
+	const font = await pdf.embedFont(StandardFonts.HelveticaBold);
+	const image = await pdf.embedPng(await dataUrlBytes(qrDataUrl));
+	const titleSize = 48;
+	const codeSize = 28;
+	const titleLines = wrapText(booth.name, font, titleSize, 510).slice(0, 3);
+	const titleY = 750;
+	const codeY = titleY - titleLines.length * 54 - 20;
+	const qrSize = 425;
+
+	titleLines.forEach((line, index) => {
+		page.drawText(line, {
+			x: (595.28 - font.widthOfTextAtSize(line, titleSize)) / 2,
+			y: titleY - index * 54,
+			size: titleSize,
+			font,
+		});
+	});
+	page.drawText(booth.boothCode, {
+		x: (595.28 - font.widthOfTextAtSize(booth.boothCode, codeSize)) / 2,
+		y: codeY,
+		size: codeSize,
+		font,
+	});
+	page.drawImage(image, {
+		x: (595.28 - qrSize) / 2,
+		y: codeY - qrSize - 35,
+		width: qrSize,
+		height: qrSize,
+	});
+
+	const bytes = await pdf.save();
+	const buffer = new ArrayBuffer(bytes.byteLength);
+	new Uint8Array(buffer).set(bytes);
+
+	return new Blob([buffer], { type: "application/pdf" });
+}
+
+async function downloadQrZip() {
+	isDownloadingQrZip.value = true;
+	error.value = "";
+
+	try {
+		const { default: JSZip } = await import("jszip");
+		const zip = new JSZip();
+
+		for (const booth of booths.value) {
+			zip.file(
+				`${fileName(`${booth.boothCode}-${booth.name}`)}.pdf`,
+				await createBoothQrPdf(booth),
+			);
+		}
+
+		const blob = await zip.generateAsync({ type: "blob" });
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement("a");
+		link.href = url;
+		link.download = "booth-qr-codes.zip";
+		link.click();
+		URL.revokeObjectURL(url);
+	} catch (caught) {
+		error.value =
+			caught instanceof Error ? caught.message : "Failed to download QR ZIP";
+	} finally {
+		isDownloadingQrZip.value = false;
+	}
 }
 
 onMounted(async () => {
@@ -147,12 +260,18 @@ async function deleteRecord(
 <template>
 	<main class="min-h-screen bg-background px-6 py-8">
 		<div class="flex w-full flex-col gap-6">
-			<Tabs v-model="tab" default-value="booths" class="flex flex-col gap-6">
-				<TabsList class="mx-auto">
-					<TabsTrigger value="booths">Booths</TabsTrigger>
-					<TabsTrigger value="events">Events</TabsTrigger>
-				</TabsList>
-			</Tabs>
+			<div class="flex items-center justify-between gap-4">
+				<div class="w-28" />
+				<Tabs v-model="tab" default-value="booths">
+					<TabsList>
+						<TabsTrigger value="booths">Booths</TabsTrigger>
+						<TabsTrigger value="events">Events</TabsTrigger>
+					</TabsList>
+				</Tabs>
+				<Button variant="outline" as-child>
+					<RouterLink to="/batch-import">Batch import</RouterLink>
+				</Button>
+			</div>
 
 			<section v-if="tab === 'booths'" class="flex flex-col gap-4">
 				<header class="flex flex-col gap-1">
@@ -162,9 +281,20 @@ async function deleteRecord(
 							<p class="text-sm text-muted-foreground">All booth records.</p>
 						</div>
 
-						<Button as-child>
-							<RouterLink to="/booths/new">Create booth</RouterLink>
-						</Button>
+						<div class="flex gap-2">
+							<Button
+								variant="outline"
+								:disabled="
+									isLoading || booths.length === 0 || isDownloadingQrZip
+								"
+								@click="downloadQrZip"
+							>
+								{{ isDownloadingQrZip ? "Creating ZIP..." : "Download QR ZIP" }}
+							</Button>
+							<Button as-child>
+								<RouterLink to="/booths/new">Create booth</RouterLink>
+							</Button>
+						</div>
 					</div>
 				</header>
 
@@ -182,23 +312,35 @@ async function deleteRecord(
 				<Table v-else>
 					<TableHeader>
 						<TableRow>
+							<TableHead>Ref ID</TableHead>
 							<TableHead>Code</TableHead>
-							<TableHead>Name</TableHead>
+							<TableHead class="w-2/5">Name</TableHead>
 							<TableHead>Category</TableHead>
-							<TableHead>Location</TableHead>
+							<TableHead class="w-32">Location</TableHead>
 							<TableHead>Time</TableHead>
 							<TableHead class="text-right">Actions</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>
 						<TableRow v-for="booth in booths" :key="booth.id">
+							<TableCell>{{ booth.refId || "-" }}</TableCell>
 							<TableCell class="font-medium">{{ booth.boothCode }}</TableCell>
-							<TableCell>{{ booth.name }}</TableCell>
+							<TableCell class="w-2/5">{{ booth.name }}</TableCell>
 							<TableCell>{{ formatInterest(booth.category) }}</TableCell>
-							<TableCell>{{ formatLocation(booth) }}</TableCell>
+							<TableCell class="w-32 whitespace-nowrap text-xs">{{
+								formatLocation(booth)
+							}}</TableCell>
 							<TableCell>{{ booth.startTime }} - {{ booth.endTime }}</TableCell>
 							<TableCell>
 								<div class="flex justify-end gap-2">
+									<Button size="sm" variant="outline" as-child>
+										<RouterLink
+											:to="`/booths/${booth.id}/qr`"
+											target="_blank"
+											rel="noopener"
+											>Show QR Code</RouterLink
+										>
+									</Button>
 									<Button size="sm" variant="outline" as-child>
 										<RouterLink :to="`/booths/${booth.id}/edit`"
 											>Edit</RouterLink
@@ -247,8 +389,9 @@ async function deleteRecord(
 				<Table v-else>
 					<TableHeader>
 						<TableRow>
-							<TableHead>Title</TableHead>
-							<TableHead>Location</TableHead>
+							<TableHead>Ref ID</TableHead>
+							<TableHead class="w-2/5">Title</TableHead>
+							<TableHead class="w-32">Location</TableHead>
 							<TableHead>Starts</TableHead>
 							<TableHead>Ends</TableHead>
 							<TableHead class="text-right">Actions</TableHead>
@@ -256,8 +399,11 @@ async function deleteRecord(
 					</TableHeader>
 					<TableBody>
 						<TableRow v-for="event in events" :key="event.id">
-							<TableCell class="font-medium">{{ event.title }}</TableCell>
-							<TableCell>{{ formatLocation(event) }}</TableCell>
+							<TableCell>{{ event.refId || "-" }}</TableCell>
+							<TableCell class="w-2/5 font-medium">{{ event.title }}</TableCell>
+							<TableCell class="w-32 whitespace-nowrap text-xs">{{
+								formatLocation(event)
+							}}</TableCell>
 							<TableCell>{{ formatDateTime(event.startsAt) }}</TableCell>
 							<TableCell>{{ formatDateTime(event.endsAt) }}</TableCell>
 							<TableCell>

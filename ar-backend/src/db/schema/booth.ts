@@ -11,6 +11,7 @@ export function createBoothQrCode(id: { toString(): string }) {
 
 const boothSchema = new Schema(
 	{
+		refId: { type: String, trim: true },
 		boothCode: { type: String, required: true, unique: true, trim: true },
 		name: { type: String, required: true, trim: true },
 		overview: { type: String, required: true, trim: true },
@@ -25,6 +26,7 @@ const boothSchema = new Schema(
 				{
 					title: { type: String, required: true, trim: true },
 					summary: { type: String, required: true, trim: true },
+					imageFileName: { type: String, required: true, trim: true },
 					imageObject: { type: String, required: true, trim: true },
 				},
 			],
@@ -52,6 +54,7 @@ const boothSchema = new Schema(
 	{ timestamps: true },
 );
 
+boothSchema.index({ refId: 1 }, { unique: true, sparse: true });
 boothSchema.index({ priority: -1, name: 1 });
 boothSchema.index({ locationId: 1, priority: -1, name: 1 });
 

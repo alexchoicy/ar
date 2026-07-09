@@ -15,12 +15,20 @@ const router = createRouter({
 			component: () => import("@/views/HomeView.vue"),
 		},
 		{
+			path: "/batch-import",
+			component: () => import("@/views/BatchImportView.vue"),
+		},
+		{
 			path: "/booths/new",
 			component: () => import("@/views/EditBoothView.vue"),
 		},
 		{
 			path: "/booths/:id/edit",
 			component: () => import("@/views/EditBoothView.vue"),
+		},
+		{
+			path: "/booths/:id/qr",
+			component: () => import("@/views/BoothQrView.vue"),
 		},
 		{
 			path: "/events/new",

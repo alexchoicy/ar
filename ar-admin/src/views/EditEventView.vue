@@ -17,11 +17,11 @@ import {
 } from "@/components/ui/combobox";
 import {
 	Field,
+	FieldDescription,
 	FieldError,
 	FieldGroup,
 	FieldLabel,
 	FieldLegend,
-	FieldSeparator,
 	FieldSet,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,7 @@ import type { Building } from "@/lib/buildings";
 
 type EventResponse = {
 	id: string;
+	refId?: string;
 	title: string;
 	description: string;
 	startsAt: string;
@@ -50,6 +51,7 @@ const isLoading = ref(true);
 const isSaving = ref(false);
 const buildings = ref<Building[]>([]);
 const form = reactive({
+	refId: "",
 	title: "",
 	description: "",
 	buildingId: "",
@@ -76,6 +78,10 @@ function toDatetimeInput(value: string) {
 		.slice(0, 16);
 }
 
+function toIsoDatetime(value: string) {
+	return new Date(value).toISOString();
+}
+
 onMounted(async () => {
 	try {
 		buildings.value = await fetchBuildings();
@@ -89,6 +95,7 @@ onMounted(async () => {
 			throw new Error(eventBody.error ?? "Failed to load event");
 
 		const event = eventBody.data as EventResponse;
+		form.refId = event.refId ?? "";
 		form.title = event.title;
 		form.description = event.description;
 		form.buildingId = event.location?.building?.id ?? "";
@@ -131,8 +138,8 @@ async function save() {
 				credentials: "include",
 				body: JSON.stringify({
 					...form,
-					startsAt: new Date(form.startsAt).toISOString(),
-					endsAt: new Date(form.endsAt).toISOString(),
+					startsAt: toIsoDatetime(form.startsAt),
+					endsAt: toIsoDatetime(form.endsAt),
 				}),
 			},
 		);
@@ -180,6 +187,14 @@ async function save() {
 				<FieldSet>
 					<FieldLegend>Details</FieldLegend>
 					<FieldGroup>
+						<Field>
+							<FieldLabel for="ref-id">Ref ID</FieldLabel>
+							<Input id="ref-id" v-model="form.refId" />
+							<FieldDescription>
+								Unique ID used by Excel batch import to update this record.
+							</FieldDescription>
+						</Field>
+
 						<Field>
 							<FieldLabel for="title">Title</FieldLabel>
 							<Input id="title" v-model="form.title" required />
