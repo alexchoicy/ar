@@ -28,7 +28,7 @@ const studentSchema = new Schema(
 		},
 		savedEvents: { type: [{ type: Schema.Types.ObjectId, ref: "Event" }], default: [] },
 		savedBooths: { type: [{ type: Schema.Types.ObjectId, ref: "Booth" }], default: [] },
-		isCompletedSurvey: { type: Boolean, default: false },
+		surveySubmittedAt: { type: Date, default: null },
 		redeemed: {
 			minorGift: {
 				redeemedDateTime: { type: Date },

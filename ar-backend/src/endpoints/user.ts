@@ -54,7 +54,7 @@ type UserOutput = {
 	eStamps: { boothId: string; dateTime: Date }[];
 	savedEvents: string[];
 	savedBooths: string[];
-	isCompletedSurvey: boolean;
+	surveySubmittedAt?: Date;
 	redeemed: {
 		minorGift?: { redeemedDateTime?: Date };
 		majorGift?: { redeemedDateTime?: Date };
@@ -73,7 +73,7 @@ function toUserOutput(student: {
 	eStamps: { id: { toString(): string }; dateTime: Date }[];
 	savedEvents: { toString(): string }[];
 	savedBooths: { toString(): string }[];
-	isCompletedSurvey: boolean;
+	surveySubmittedAt?: Date | null;
 	redeemed?: {
 		minorGift?: { redeemedDateTime?: Date | null } | null;
 		majorGift?: { redeemedDateTime?: Date | null } | null;
@@ -94,7 +94,7 @@ function toUserOutput(student: {
 		})),
 		savedEvents: student.savedEvents.map((event) => event.toString()),
 		savedBooths: student.savedBooths.map((booth) => booth.toString()),
-		isCompletedSurvey: student.isCompletedSurvey,
+		surveySubmittedAt: student.surveySubmittedAt ?? undefined,
 		redeemed: {
 			minorGift: {
 				redeemedDateTime:
@@ -249,7 +249,7 @@ userRouter.post(
 		const redeemedStudent = await Student.findOneAndUpdate(
 			{
 				_id: req.user?.sub,
-				isCompletedSurvey: true,
+				surveySubmittedAt: { $ne: null },
 				[redeemedPath]: null,
 				$expr: {
 					$gte: [{ $size: { $ifNull: ["$eStamps", []] } }, requiredStamps],
@@ -269,7 +269,7 @@ userRouter.post(
 			throw createHttpError(404, "User not found");
 		}
 
-		if (!student.isCompletedSurvey) {
+		if (!student.surveySubmittedAt) {
 			throw createHttpError(400, "Survey must be completed before redemption");
 		}
 

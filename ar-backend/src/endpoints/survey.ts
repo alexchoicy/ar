@@ -38,12 +38,12 @@ surveyRouter.post(
 	validateBody(submitSurveyInput),
 	async (req, res) => {
 		const student = await Student.findById(req.user!.sub).select(
-			"isCompletedSurvey",
+			"surveySubmittedAt",
 		);
 		if (!student) {
 			throw createHttpError(404, "Student not found");
 		}
-		if (student.isCompletedSurvey) {
+		if (student.surveySubmittedAt) {
 			throw createHttpError(409, "Survey already submitted");
 		}
 
@@ -82,7 +82,7 @@ surveyRouter.post(
 
 		const submission = await SurveyResponse.create({ answers: answersMap });
 		await Student.findByIdAndUpdate(req.user!.sub, {
-			isCompletedSurvey: true,
+			surveySubmittedAt: new Date(),
 		});
 
 		return res.api(201, { id: submission.id });
