@@ -1,0 +1,214 @@
+info:
+  name: survey submit
+  type: http
+  seq: 11
+
+http:
+  method: POST
+  url: http://localhost:3000/api/survey/submit
+  body:
+    type: json
+    data: |-
+      [
+        { "id": "6a51e36c829cb3365d0433e0", "answer": 0 },
+        { "id": "6a51e36c829cb3365d0433e1", "answer": 0 },
+        { "id": "6a51e36c829cb3365d0433e2", "answer": -2 },
+        { "id": "6a51e36c829cb3365d0433e3", "answer": 2 },
+        { "id": "6a51e36c829cb3365d0433e4", "answer": "No suggestions." }
+      ]
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+examples:
+  - name: submitted
+    request:
+      url: http://localhost:3000/api/survey/submit
+      method: POST
+      body:
+        type: json
+        data: |-
+          [
+            { "id": "6a51e36c829cb3365d0433e0", "answer": 0 },
+            { "id": "6a51e36c829cb3365d0433e1", "answer": 0 },
+            { "id": "6a51e36c829cb3365d0433e2", "answer": 0 },
+            { "id": "6a51e36c829cb3365d0433e3", "answer": 0 },
+            { "id": "6a51e36c829cb3365d0433e4", "answer": "No suggestions." }
+          ]
+    response:
+      status: 409
+      statusText: Conflict
+      headers:
+        - name: cross-origin-opener-policy
+          value: same-origin
+        - name: cross-origin-resource-policy
+          value: same-origin
+        - name: origin-agent-cluster
+          value: ?1
+        - name: referrer-policy
+          value: no-referrer
+        - name: strict-transport-security
+          value: max-age=31536000; includeSubDomains
+        - name: x-content-type-options
+          value: nosniff
+        - name: x-dns-prefetch-control
+          value: off
+        - name: x-download-options
+          value: noopen
+        - name: x-frame-options
+          value: SAMEORIGIN
+        - name: x-permitted-cross-domain-policies
+          value: none
+        - name: x-xss-protection
+          value: "0"
+        - name: x-request-id
+          value: e966b1fd-560a-4295-a88f-8a5642e48fd8
+        - name: content-type
+          value: application/json; charset=utf-8
+        - name: content-length
+          value: "52"
+        - name: etag
+          value: W/"34-GoJ0lDkvLfnDPeZva80M7JJKFjw"
+        - name: date
+          value: Sat, 11 Jul 2026 07:27:36 GMT
+        - name: connection
+          value: keep-alive
+        - name: keep-alive
+          value: timeout=5
+      body:
+        type: json
+        data: |-
+          {
+            "success": false,
+            "error": "Survey already submitted"
+          }
+  - name: Incorrect ans
+    request:
+      url: http://localhost:3000/api/survey/submit
+      method: POST
+      body:
+        type: json
+        data: |-
+          [
+            { "id": "6a51e36c829cb3365d0433e0", "answer": 0 },
+            { "id": "6a51e36c829cb3365d0433e1", "answer": 0 },
+            { "id": "6a51e36c829cb3365d0433e2", "answer": 0 },
+            { "id": "6a51e36c829cb3365d0433e3", "answer": 3 },
+            { "id": "6a51e36c829cb3365d0433e4", "answer": "No suggestions." }
+          ]
+    response:
+      status: 400
+      statusText: Bad Request
+      headers:
+        - name: cross-origin-opener-policy
+          value: same-origin
+        - name: cross-origin-resource-policy
+          value: same-origin
+        - name: origin-agent-cluster
+          value: ?1
+        - name: referrer-policy
+          value: no-referrer
+        - name: strict-transport-security
+          value: max-age=31536000; includeSubDomains
+        - name: x-content-type-options
+          value: nosniff
+        - name: x-dns-prefetch-control
+          value: off
+        - name: x-download-options
+          value: noopen
+        - name: x-frame-options
+          value: SAMEORIGIN
+        - name: x-permitted-cross-domain-policies
+          value: none
+        - name: x-xss-protection
+          value: "0"
+        - name: x-request-id
+          value: 8a2d0165-e229-43b4-ae1c-aa0f633d5331
+        - name: content-type
+          value: application/json; charset=utf-8
+        - name: content-length
+          value: "80"
+        - name: etag
+          value: W/"50-KwDf0ekA3OXJROPCy5Oc65i/mpY"
+        - name: date
+          value: Sat, 11 Jul 2026 07:30:08 GMT
+        - name: connection
+          value: keep-alive
+        - name: keep-alive
+          value: timeout=5
+      body:
+        type: json
+        data: |-
+          {
+            "success": false,
+            "error": "Invalid answer for question 6a51e36c829cb3365d0433e3"
+          }
+  - name: success
+    request:
+      url: http://localhost:3000/api/survey/submit
+      method: POST
+      body:
+        type: json
+        data: |-
+          [
+            { "id": "6a51e36c829cb3365d0433e0", "answer": 0 },
+            { "id": "6a51e36c829cb3365d0433e1", "answer": 0 },
+            { "id": "6a51e36c829cb3365d0433e2", "answer": -2 },
+            { "id": "6a51e36c829cb3365d0433e3", "answer": 2 },
+            { "id": "6a51e36c829cb3365d0433e4", "answer": "No suggestions." }
+          ]
+    response:
+      status: 201
+      statusText: Created
+      headers:
+        - name: cross-origin-opener-policy
+          value: same-origin
+        - name: cross-origin-resource-policy
+          value: same-origin
+        - name: origin-agent-cluster
+          value: ?1
+        - name: referrer-policy
+          value: no-referrer
+        - name: strict-transport-security
+          value: max-age=31536000; includeSubDomains
+        - name: x-content-type-options
+          value: nosniff
+        - name: x-dns-prefetch-control
+          value: off
+        - name: x-download-options
+          value: noopen
+        - name: x-frame-options
+          value: SAMEORIGIN
+        - name: x-permitted-cross-domain-policies
+          value: none
+        - name: x-xss-protection
+          value: "0"
+        - name: x-request-id
+          value: 57d9cd40-84d3-4b8a-ab5f-56d754a24146
+        - name: content-type
+          value: application/json; charset=utf-8
+        - name: content-length
+          value: "57"
+        - name: etag
+          value: W/"39-ShyFwcRN53HwAUkdjIGLUX4zZs8"
+        - name: date
+          value: Sat, 11 Jul 2026 07:30:24 GMT
+        - name: connection
+          value: keep-alive
+        - name: keep-alive
+          value: timeout=5
+      body:
+        type: json
+        data: |-
+          {
+            "success": true,
+            "data": {
+              "id": "6a51f1106a5477b811412550"
+            }
+          }

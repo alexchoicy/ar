@@ -11,7 +11,7 @@ http:
     data: |-
       {
         "studentId": "{{id}}",
-        "name": "{{name}}"
+        "email": "{{email}}"
       }
   auth: inherit
 
@@ -30,8 +30,8 @@ examples:
         type: json
         data: |-
           {
-            "studentId": "12345678",
-            "name": "Alex Choi"
+            "studentId": "00000000",
+            "email": "alex@alex.com"
           }
     response:
       status: 200
@@ -82,8 +82,8 @@ examples:
         type: json
         data: |-
           {
-            "studentId": "12345679",
-            "name": "Alex Coi"
+            "studentId": "00000001",
+            "email": "alex@alex.com"
           }
     response:
       status: 401

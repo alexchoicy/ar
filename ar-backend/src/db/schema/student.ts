@@ -45,6 +45,7 @@ studentSchema.index(
 	{ studentId: 1 },
 	{ unique: true, partialFilterExpression: { studentId: { $gt: "00000000" } } },
 );
+studentSchema.index({ email: 1 }, { unique: true });
 
 export type StudentDocument = InferSchemaType<typeof studentSchema>;
 

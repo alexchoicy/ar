@@ -13,10 +13,10 @@ http:
         "studentId": "{{id}}",
         "name": "{{name}}",
         "email": "alex@alex.com",
-        "faculty": "Engineering",
+        "faculty": "communication",
         "major": "Computer Science",
         "yearOfStudy": 1,
-        "interests": ["web", "ai"]
+        "interests": ["sports_athletics"]
       }
 
 settings:
@@ -34,7 +34,7 @@ examples:
         type: json
         data: |-
           {
-            "studentId": "12345678",
+            "studentId": "00000000",
             "name": "Alex Choi",
               "email": "alex@alex.com",
             "faculty": "Engineering",
@@ -91,8 +91,9 @@ examples:
         type: json
         data: |-
           {
-            "studentId": "12345678",
+            "studentId": "00000000",
             "name": "Alex Choi",
+            "email": "alex@alex.com",
             "faculty": "Engineering",
             "major": "Computer Science",
             "yearOfStudy": 1,

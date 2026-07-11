@@ -12,7 +12,7 @@ export const adminAuthRouter = Router();
 
 const loginInput = z.object({
 	studentId: z.string().regex(/^\d{8}$/, "studentId must be 8 digits"),
-	name: z.string().min(1),
+	email: z.email(),
 });
 
 const adminLoginInput = z.object({
@@ -38,7 +38,10 @@ function toAdminUser(name: string) {
 }
 
 authRouter.post("/login", validateBody(loginInput), async (req, res) => {
-	const student = await Student.findOne(req.body);
+	const student = await Student.findOne({
+		studentId: req.body.studentId,
+		email: req.body.email.toLowerCase(),
+	});
 
 	if (!student) {
 		throw createHttpError(401, "Invalid credentials");

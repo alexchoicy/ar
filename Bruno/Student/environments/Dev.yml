@@ -4,5 +4,8 @@ variables:
     name: token
   - secret: true
     name: id
+    value: "00000000"
+  - name: email
+    value: alex@alex.com
   - name: name
     value: Alex Choi
