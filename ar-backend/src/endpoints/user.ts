@@ -54,10 +54,10 @@ type UserOutput = {
 	eStamps: { boothId: string; dateTime: Date }[];
 	savedEvents: string[];
 	savedBooths: string[];
-	surveySubmittedAt?: Date;
+	surveySubmittedAt: Date | null;
 	redeemed: {
-		minorGift?: { redeemedDateTime?: Date };
-		majorGift?: { redeemedDateTime?: Date };
+		minorGift: { redeemedDateTime: Date | null };
+		majorGift: { redeemedDateTime: Date | null };
 	};
 };
 
@@ -94,15 +94,15 @@ function toUserOutput(student: {
 		})),
 		savedEvents: student.savedEvents.map((event) => event.toString()),
 		savedBooths: student.savedBooths.map((booth) => booth.toString()),
-		surveySubmittedAt: student.surveySubmittedAt ?? undefined,
+		surveySubmittedAt: student.surveySubmittedAt ?? null,
 		redeemed: {
 			minorGift: {
 				redeemedDateTime:
-					student.redeemed?.minorGift?.redeemedDateTime ?? undefined,
+					student.redeemed?.minorGift?.redeemedDateTime ?? null,
 			},
 			majorGift: {
 				redeemedDateTime:
-					student.redeemed?.majorGift?.redeemedDateTime ?? undefined,
+					student.redeemed?.majorGift?.redeemedDateTime ?? null,
 			},
 		},
 	};
