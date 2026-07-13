@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 import { Student } from "./schema/student.js";
+import { Suggestion } from "./schema/suggestion.js";
 
 export async function connectDb() {
 	const connectionString = process.env.MONGO_CONNECTION_STRING;
@@ -15,5 +16,6 @@ export async function connectDb() {
 	}
 
 	await mongoose.connect(connectionString, { dbName: databaseName });
-	await Student.syncIndexes();
+  await Student.syncIndexes();
+	await Suggestion.syncIndexes();
 }

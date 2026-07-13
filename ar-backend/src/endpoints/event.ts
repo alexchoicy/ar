@@ -50,7 +50,7 @@ const updateEventInput = z
 		"startsAt must be before endsAt",
 	);
 
-function toEventDetailOutput(event: any, location: any, building: any) {
+export function toEventDetailOutput(event: any, location: any, building: any) {
 	return {
 		...toEventOutput(event),
 		location: location ? toLocationOutput(location, building) : null,

@@ -24,6 +24,19 @@ const registerInput = z.object({
 	interests: z.array(z.enum(INTERESTS)).default([]),
 });
 
+const profileInput = z.object({
+	studentId: z
+		.string()
+		.regex(/^\d{8}$/, "studentId must be 8 digits")
+		.optional(),
+	email: z.email().optional(),
+	name: z.string().min(1).optional(),
+	faculty: z.enum(FACULTIES).optional(),
+	major: z.string().min(1).optional(),
+	yearOfStudy: z.number().int().min(1).optional(),
+	interests: z.array(z.enum(INTERESTS)).optional(),
+});
+
 const savedInput = z.object({
 	id: z.string().refine(Types.ObjectId.isValid, "id must be a valid ObjectId"),
 });
@@ -134,6 +147,30 @@ userRouter.get("/me", requireAuth, async (req, res) => {
 
 	return res.api(200, toUserOutput(student));
 });
+
+userRouter.patch(
+	"/me",
+	requireStudent,
+	validateBody(profileInput),
+	async (req, res) => {
+		const $set = Object.fromEntries(
+			Object.entries(req.body).filter(([, value]) => value !== undefined),
+		);
+		const student = Object.keys($set).length
+			? await Student.findOneAndUpdate(
+					{ _id: req.user?.sub },
+					{ $set },
+					{ new: true, runValidators: true },
+				)
+			: await getCurrentStudent(req.user?.sub);
+
+		if (!student) {
+			throw createHttpError(404, "User not found");
+		}
+
+		return res.api(200, toUserOutput(student));
+	},
+);
 
 userRouter.post(
 	"/saved/events",

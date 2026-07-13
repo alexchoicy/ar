@@ -6,7 +6,7 @@ import { z } from "zod";
 import { Booth } from "../db/schema/booth.js";
 import { Building } from "../db/schema/building.js";
 import { Event } from "../db/schema/event.js";
-import { Location } from "../db/schema/location.js";
+import { LOCATION_TAGS, Location } from "../db/schema/location.js";
 import { requireAdmin } from "../middleware/auth.js";
 import { clearCache } from "../middleware/cache.js";
 import { validateBody } from "../middleware/validateBody.js";
@@ -21,6 +21,7 @@ const createLocationInput = z.object({
 		.refine(Types.ObjectId.isValid, "buildingId must be a valid ObjectId"),
 	floor: z.string().optional(),
 	room: z.string().optional(),
+	tag: z.enum(LOCATION_TAGS).optional(),
 });
 
 export function groupByLocation<
@@ -91,6 +92,7 @@ export function toLocationOutput(
 		name: location.name,
 		floor: location.floor,
 		room: location.room,
+		tag: location.tag,
 		...(building !== undefined
 			? { building: building ? toBuildingOutput(building) : null }
 			: {}),
@@ -124,8 +126,16 @@ export async function findOrCreateLocation(
 	return { location, building };
 }
 
-locationRouter.get("/", async (_req, res) => {
-	const locations = await Location.find().sort({ name: 1 }).lean();
+locationRouter.get("/", async (req, res) => {
+	const tag = z.enum(LOCATION_TAGS).optional().safeParse(req.query.tag);
+
+	if (!tag.success) {
+		throw createHttpError(400, "Invalid location tag");
+	}
+
+	const locations = await Location.find(tag.data ? { tag: tag.data } : {})
+		.sort({ name: 1 })
+		.lean();
 	const buildings = await Building.find({
 		_id: { $in: locations.map((location) => location.buildingId) },
 	}).lean();
@@ -186,6 +196,7 @@ locationRouter.post(
 			buildingId: location.buildingId.toString(),
 			floor: location.floor,
 			room: location.room,
+			tag: location.tag,
 		});
 	},
 );
