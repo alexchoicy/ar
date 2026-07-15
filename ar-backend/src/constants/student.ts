@@ -5,6 +5,7 @@ export const FACULTIES = [
 	"communication",
 	"creative_arts",
 	"science",
+	"transdisciplinary_undergraduate_programmes",
 	"continuing_education",
 ] as const;
 

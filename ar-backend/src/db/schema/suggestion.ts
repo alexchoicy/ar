@@ -14,6 +14,10 @@ const suggestionSchema = new Schema(
 			type: [{ type: Schema.Types.ObjectId, ref: "Event" }],
 			default: [],
 		},
+		optionalEventIds: {
+			type: [{ type: Schema.Types.ObjectId, ref: "Event" }],
+			default: [],
+		},
 	},
 	{ timestamps: true },
 );

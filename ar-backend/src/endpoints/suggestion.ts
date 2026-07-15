@@ -32,13 +32,20 @@ suggestionRouter.get("/:faculty/:studyYear", async (req, res) => {
 		throw createHttpError(404, "Suggestion not found");
 	}
 
-	const events = await Event.find({ _id: { $in: suggestion.eventIds } }).lean();
+	const suggestedEvents = [
+		...suggestion.eventIds.map((id) => ({ id, optional: false })),
+		...(suggestion.optionalEventIds ?? []).map((id) => ({ id, optional: true })),
+	];
+	const events = await Event.find({
+		_id: { $in: suggestedEvents.map(({ id }) => id) },
+	}).lean();
 	const eventsById = new Map(events.map((event) => [event._id.toString(), event]));
-	const orderedEvents = suggestion.eventIds
-		.map((id) => eventsById.get(id.toString()))
-		.filter((event) => event !== undefined);
+	const orderedEvents = suggestedEvents.flatMap(({ id, optional }) => {
+		const event = eventsById.get(id.toString());
+		return event ? [{ event, optional }] : [];
+	});
 	const locations = await Location.find({
-		_id: { $in: orderedEvents.map((event) => event.locationId) },
+		_id: { $in: orderedEvents.map(({ event }) => event.locationId) },
 	}).lean();
 	const buildings = await Building.find({
 		_id: { $in: locations.map((location) => location.buildingId) },
@@ -52,14 +59,17 @@ suggestionRouter.get("/:faculty/:studyYear", async (req, res) => {
 
 	return res.api(
 		200,
-		orderedEvents.map((event) => {
+		orderedEvents.map(({ event, optional }) => {
 			const location = locationsById.get(event.locationId.toString());
 
-			return toEventDetailOutput(
-				event,
-				location,
-				location ? buildingsById.get(location.buildingId.toString()) : null,
-			);
+			return {
+				...toEventDetailOutput(
+					event,
+					location,
+					location ? buildingsById.get(location.buildingId.toString()) : null,
+				),
+				optional,
+			};
 		}),
 	);
 });
