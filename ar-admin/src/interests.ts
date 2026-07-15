@@ -11,6 +11,7 @@ export const INTERESTS_MAP = {
 	wellness_mindfulness: "Wellness",
 	career_entrepreneur: "Career & Startups",
 	media_journalism: "Media",
+	student_services: "Student Services",
 } as const;
 
 export function formatInterest(interest: string) {

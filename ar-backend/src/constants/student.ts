@@ -21,6 +21,7 @@ export const INTERESTS = [
 	"wellness_mindfulness",
 	"career_entrepreneur",
 	"media_journalism",
+	"student_services",
 ] as const;
 
 export type Faculty = (typeof FACULTIES)[number];
