@@ -88,7 +88,9 @@ onMounted(async () => {
 
 		if (isCreate.value) return;
 
-		const eventResponse = await fetch(`/api/events/${route.params.id}`);
+		const eventResponse = await fetch(
+			`/api/events/${route.params.id}?includeHidden=true`,
+		);
 		const eventBody = await eventResponse.json();
 
 		if (!eventResponse.ok)

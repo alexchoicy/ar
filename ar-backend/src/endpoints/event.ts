@@ -4,7 +4,7 @@ import { Types } from "mongoose";
 import { z } from "zod";
 
 import { Building } from "../db/schema/building.js";
-import { Event } from "../db/schema/event.js";
+import { Event, visibleEventFilter } from "../db/schema/event.js";
 import { Location } from "../db/schema/location.js";
 import { requireAdmin } from "../middleware/auth.js";
 import { clearCache } from "../middleware/cache.js";
@@ -27,6 +27,7 @@ const eventInputShape = {
 	refId: refIdInput,
 	title: z.string().min(1),
 	description: z.string().min(1),
+	hidden: z.boolean().optional(),
 	startsAt: z.coerce.date(),
 	endsAt: z.coerce.date(),
 	buildingId: z
@@ -57,8 +58,12 @@ export function toEventDetailOutput(event: any, location: any, building: any) {
 	};
 }
 
-eventRouter.get("/", async (_req, res) => {
-	const events = await Event.find().sort({ startsAt: 1 }).lean();
+eventRouter.get("/", async (req, res) => {
+	const events = await Event.find(
+		req.query.includeHidden === "true" ? {} : visibleEventFilter,
+	)
+		.sort({ startsAt: 1 })
+		.lean();
 	const locations = await Location.find({
 		_id: { $in: events.map((event) => event.locationId) },
 	}).lean();
@@ -91,7 +96,10 @@ eventRouter.get("/:id", async (req, res) => {
 		throw createHttpError(404, "Event not found");
 	}
 
-	const event = await Event.findById(req.params.id).lean();
+	const event = await Event.findOne({
+		_id: req.params.id,
+		...(req.query.includeHidden === "true" ? {} : visibleEventFilter),
+	}).lean();
 
 	if (!event) {
 		throw createHttpError(404, "Event not found");
@@ -119,6 +127,7 @@ eventRouter.post(
 			...(req.body.refId ? { refId: req.body.refId } : {}),
 			title: req.body.title,
 			description: req.body.description,
+			hidden: req.body.hidden ?? false,
 			startsAt: req.body.startsAt,
 			endsAt: req.body.endsAt,
 			locationId: location._id,
@@ -161,6 +170,7 @@ eventRouter.put(
 			locationId: location._id,
 		};
 		if (req.body.refId) $set.refId = req.body.refId;
+		if (req.body.hidden !== undefined) $set.hidden = req.body.hidden;
 
 		const event = await Event.findByIdAndUpdate(
 			id,

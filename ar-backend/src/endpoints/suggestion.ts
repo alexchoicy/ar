@@ -40,10 +40,12 @@ suggestionRouter.get("/:faculty/:studyYear", async (req, res) => {
 		_id: { $in: suggestedEvents.map(({ id }) => id) },
 	}).lean();
 	const eventsById = new Map(events.map((event) => [event._id.toString(), event]));
-	const orderedEvents = suggestedEvents.flatMap(({ id, optional }) => {
-		const event = eventsById.get(id.toString());
-		return event ? [{ event, optional }] : [];
-	});
+	const orderedEvents = suggestedEvents
+		.flatMap(({ id, optional }) => {
+			const event = eventsById.get(id.toString());
+			return event ? [{ event, optional }] : [];
+		})
+		.sort((a, b) => a.event.startsAt.getTime() - b.event.startsAt.getTime());
 	const locations = await Location.find({
 		_id: { $in: orderedEvents.map(({ event }) => event.locationId) },
 	}).lean();

@@ -124,7 +124,11 @@ onMounted(async () => {
 async function loadImportData() {
 	try {
 		const [loadedBuildings, boothsResponse, eventsResponse] = await Promise.all(
-			[fetchBuildings(), fetch("/api/booths"), fetch("/api/events")],
+			[
+				fetchBuildings(),
+				fetch("/api/booths"),
+				fetch("/api/events?includeHidden=true"),
+			],
 		);
 		const [boothsBody, eventsBody] = await Promise.all([
 			boothsResponse.json(),

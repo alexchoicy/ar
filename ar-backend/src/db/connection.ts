@@ -16,6 +16,6 @@ export async function connectDb() {
 	}
 
 	await mongoose.connect(connectionString, { dbName: databaseName });
-  await Student.syncIndexes();
+	await Student.syncIndexes();
 	await Suggestion.syncIndexes();
 }

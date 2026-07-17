@@ -186,7 +186,7 @@ onMounted(async () => {
 	try {
 		const [boothsResponse, eventsResponse] = await Promise.all([
 			fetch("/api/booths"),
-			fetch("/api/events"),
+			fetch("/api/events?includeHidden=true"),
 		]);
 		const [boothsBody, eventsBody] = await Promise.all([
 			boothsResponse.json(),

@@ -76,6 +76,7 @@ export function toEventOutput(event: any) {
 		refId: event.refId,
 		title: event.title,
 		description: event.description,
+		hidden: event.hidden ?? false,
 		startsAt: event.startsAt,
 		endsAt: event.endsAt,
 	};
