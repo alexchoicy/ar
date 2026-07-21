@@ -56,9 +56,16 @@ export function toBoothOutput(booth: any) {
 		name: booth.name,
 		overview: booth.overview,
 		category: booth.category,
+		boothArea: booth.boothArea ?? "",
+		boothNumber: booth.boothNumber ?? "",
 		qrCode: booth.qrCode,
 		startTime: booth.startTime,
 		endTime: booth.endTime,
+		images: (booth.images ?? []).map((image: any) => ({
+			id: image._id?.toString(),
+			imageFileName: image.imageFileName,
+			imageUrl: getBlobUrl(image.imageObject),
+		})),
 		programmes: booth.programmes.map((programme: any) => ({
 			id: programme._id?.toString(),
 			title: programme.title,

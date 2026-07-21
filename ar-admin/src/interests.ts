@@ -12,6 +12,7 @@ export const INTERESTS_MAP = {
 	career_entrepreneur: "Career & Startups",
 	media_journalism: "Media",
 	student_services: "Student Services",
+	office: "Office",
 } as const;
 
 export function formatInterest(interest: string) {

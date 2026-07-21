@@ -23,6 +23,7 @@ export const INTERESTS = [
 	"career_entrepreneur",
 	"media_journalism",
 	"student_services",
+	"office",
 ] as const;
 
 export type Faculty = (typeof FACULTIES)[number];

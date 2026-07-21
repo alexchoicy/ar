@@ -26,6 +26,13 @@ import {
 	FieldSet,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { INTERESTS_MAP } from "@/interests";
 import { fetchBuildings } from "@/lib/buildings";
@@ -41,6 +48,13 @@ type BoothResponse = {
 	name: string;
 	overview: string;
 	category: string;
+	boothArea: string;
+	boothNumber: string;
+	images: Array<{
+		id?: string;
+		imageFileName: string;
+		imageUrl: string;
+	}>;
 	programmes: Array<{
 		id?: string;
 		title: string;
@@ -85,6 +99,16 @@ const selectedInterest = computed({
 		form.category = interest?.value ?? "";
 	},
 });
+const boothAreas = ["A", "B", "C"];
+const images = ref<
+	Array<{
+		id: string;
+		currentImageFileName: string;
+		currentImageUrl: string;
+		previewImageUrl: string;
+		imageFile: File | null;
+	}>
+>([]);
 const programmes = ref<
 	Array<{
 		id: string;
@@ -102,6 +126,8 @@ const form = reactive({
 	name: "",
 	overview: "",
 	category: "",
+	boothArea: "",
+	boothNumber: "",
 	buildingId: "",
 	floor: "",
 	room: "",
@@ -119,7 +145,13 @@ onMounted(async () => {
 	try {
 		buildings.value = await fetchBuildings();
 
-		if (isCreate.value) return;
+		if (isCreate.value) {
+			form.buildingId =
+				buildings.value.find(
+					(building) => building.shortCode === "LI_PROMENADE",
+				)?.id ?? "";
+			return;
+		}
 
 		const boothResponse = await fetch(`/api/booths/${route.params.id}`);
 		const boothBody = await boothResponse.json();
@@ -133,6 +165,8 @@ onMounted(async () => {
 		form.name = booth.name;
 		form.overview = booth.overview;
 		form.category = booth.category;
+		form.boothArea = booth.boothArea;
+		form.boothNumber = booth.boothNumber;
 		for (const link of booth.socialLinks) {
 			if (link.type in form) form[link.type as keyof typeof form] = link.url;
 		}
@@ -141,6 +175,13 @@ onMounted(async () => {
 		form.room = booth.location?.room ?? "";
 		form.startTime = booth.startTime;
 		form.endTime = booth.endTime;
+		images.value = booth.images.map((image) => ({
+			id: image.id ?? "",
+			currentImageFileName: image.imageFileName,
+			currentImageUrl: image.imageUrl,
+			previewImageUrl: "",
+			imageFile: null,
+		}));
 		programmes.value = booth.programmes.map((programme) => ({
 			id: programme.id ?? "",
 			title: programme.title,
@@ -159,11 +200,46 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+	for (const image of images.value) {
+		if (image.previewImageUrl) URL.revokeObjectURL(image.previewImageUrl);
+	}
 	for (const programme of programmes.value) {
 		if (programme.previewImageUrl)
 			URL.revokeObjectURL(programme.previewImageUrl);
 	}
 });
+
+function addImage() {
+	images.value.push({
+		id: "",
+		currentImageFileName: "",
+		currentImageUrl: "",
+		previewImageUrl: "",
+		imageFile: null,
+	});
+}
+
+function removeImage(index: number) {
+	const [image] = images.value.splice(index, 1);
+	if (image?.previewImageUrl) URL.revokeObjectURL(image.previewImageUrl);
+}
+
+function selectImage(index: number, event: Event) {
+	const image = images.value[index];
+	if (!image) return;
+
+	const file = getInputFile(event);
+	image.imageFile = file;
+	image.previewImageUrl = replacePreviewUrl(image.previewImageUrl, file);
+}
+
+function resetImage(index: number) {
+	const image = images.value[index];
+	if (!image) return;
+
+	image.imageFile = null;
+	image.previewImageUrl = replacePreviewUrl(image.previewImageUrl, null);
+}
 
 function addProgramme() {
 	programmes.value.push({
@@ -210,6 +286,8 @@ function validateForm() {
 	if (!form.name.trim()) return "Name is required.";
 	if (!form.overview.trim()) return "Overview is required.";
 	if (!form.category) return "Category is required.";
+	if (!form.boothArea) return "Booth area is required.";
+	if (!form.boothNumber.trim()) return "Booth number is required.";
 	if (!form.buildingId) return "Building is required.";
 	if (!form.startTime) return "Start time is required.";
 	if (!form.endTime) return "End time is required.";
@@ -233,6 +311,13 @@ function validateForm() {
 	if (incompleteProgramme)
 		return "Each programme needs a title, summary, and image.";
 
+	if (
+		images.value.some(
+			(image) => !image.currentImageFileName && !image.imageFile,
+		)
+	)
+		return "Each booth image needs an image file.";
+
 	return "";
 }
 
@@ -253,6 +338,10 @@ async function save() {
 				credentials: "include",
 				body: JSON.stringify({
 					...form,
+					images: images.value.map((image) => ({
+						...(image.id ? { id: image.id } : {}),
+						imageFileName: image.imageFile?.name ?? image.currentImageFileName,
+					})),
 					socialLinks: SOCIAL_FIELDS.map(({ name }) => ({
 						type: name,
 						url: form[name],
@@ -270,6 +359,21 @@ async function save() {
 		const body = await response.json();
 
 		if (!response.ok) throw new Error(body.error ?? "Failed to save booth");
+
+		await Promise.all(
+			(body.data.imageUploadUrls ?? []).map(
+				async (item: { index: number; uploadUrl: string }) => {
+					const file = images.value[item.index]?.imageFile;
+					if (!file) return;
+
+					await uploadFile(
+						item.uploadUrl,
+						file,
+						"Failed to upload booth image",
+					);
+				},
+			),
+		);
 
 		await Promise.all(
 			(body.data.programmeUploadUrls ?? []).map(
@@ -386,8 +490,89 @@ async function save() {
 								</ComboboxList>
 							</Combobox>
 						</Field>
+
+						<div class="grid gap-4 sm:grid-cols-2">
+							<Field>
+								<FieldLabel for="booth-area">Booth area</FieldLabel>
+								<Select v-model="form.boothArea" required>
+									<SelectTrigger id="booth-area" class="w-full">
+										<SelectValue placeholder="Select area" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem
+											v-for="area in boothAreas"
+											:key="area"
+											:value="area"
+										>
+											{{ area }}
+										</SelectItem>
+									</SelectContent>
+								</Select>
+							</Field>
+
+							<Field>
+								<FieldLabel for="booth-number">Booth number</FieldLabel>
+								<Input id="booth-number" v-model="form.boothNumber" required />
+							</Field>
+						</div>
 					</FieldGroup>
 				</FieldSet>
+
+				<FieldSeparator />
+
+				<FieldSet>
+					<div class="flex items-center justify-between gap-4">
+						<FieldLegend>Booth Images</FieldLegend>
+						<Button type="button" variant="outline" @click="addImage"
+							>Add image</Button
+						>
+					</div>
+
+					<div
+						v-for="(image, index) in images"
+						:key="image.id || index"
+						class="flex flex-col gap-4 rounded-md border p-4"
+					>
+						<div class="flex justify-end">
+							<Button
+								type="button"
+								variant="destructive"
+								size="sm"
+								@click="removeImage(index)"
+							>
+								Remove
+							</Button>
+						</div>
+
+						<Field>
+							<FieldLabel :for="`booth-image-${index}`">Image</FieldLabel>
+							<img
+								v-if="image.previewImageUrl || image.currentImageUrl"
+								:src="image.previewImageUrl || image.currentImageUrl"
+								:alt="`${form.name || 'Booth'} image ${index + 1}`"
+								class="aspect-video w-full rounded-md border object-cover"
+							/>
+							<div class="flex gap-2">
+								<Input
+									:id="`booth-image-${index}`"
+									type="file"
+									accept="image/*"
+									@change="selectImage(index, $event)"
+								/>
+								<Button
+									v-if="image.imageFile"
+									type="button"
+									variant="outline"
+									@click="resetImage(index)"
+								>
+									Reset
+								</Button>
+							</div>
+						</Field>
+					</div>
+				</FieldSet>
+
+				<FieldSeparator />
 
 				<FieldSet>
 					<FieldLegend>Location & Time</FieldLegend>

@@ -16,11 +16,22 @@ const boothSchema = new Schema(
 		name: { type: String, required: true, trim: true },
 		overview: { type: String, required: true, trim: true },
 		category: { type: String, required: true, trim: true, enum: INTERESTS },
+		boothArea: { type: String, default: "", trim: true },
+		boothNumber: { type: String, default: "", trim: true },
 		locationId: { type: Schema.Types.ObjectId, ref: "Location", required: true },
 		startTime: { type: String, required: true, trim: true },
 		endTime: { type: String, required: true, trim: true },
 		tags: { type: [String], default: [] },
 		priority: { type: Number, default: 0 },
+		images: {
+			type: [
+				{
+					imageFileName: { type: String, required: true, trim: true },
+					imageObject: { type: String, required: true, trim: true },
+				},
+			],
+			default: [],
+		},
 		programmes: {
 			type: [
 				{

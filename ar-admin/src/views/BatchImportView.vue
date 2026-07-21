@@ -36,8 +36,14 @@ type CurrentBooth = {
 	name: string;
 	overview: string;
 	category: string;
+	boothArea: string;
+	boothNumber: string;
 	startTime: string;
 	endTime: string;
+	images: Array<{
+		id?: string;
+		imageFileName: string;
+	}>;
 	programmes: Array<{
 		id?: string;
 		title: string;
@@ -64,6 +70,10 @@ type ProgrammeImport = {
 	imageFileName: string;
 };
 
+type ImageImport = {
+	imageFileName: string;
+};
+
 type ImportStatus = "new" | "update" | "same" | "invalid";
 
 type ImportCard = {
@@ -78,7 +88,10 @@ type ImportCard = {
 	start: string;
 	end: string;
 	category: string;
-	programmes: ProgrammeImport[];
+	boothArea: string;
+	boothNumber: string;
+	images: ImageImport[];
+	programmes: ProgrammeImport[] | null;
 	socialLinks: Array<{ type: string; url: string }>;
 	existingId: string;
 	status: ImportStatus;
@@ -262,7 +275,10 @@ function createCard(
 		start: "",
 		end: "",
 		category: "",
-		programmes: [],
+		boothArea: "",
+		boothNumber: "",
+		images: [],
+		programmes: null,
 		socialLinks: [],
 		existingId: "",
 		status: "new",
@@ -298,6 +314,12 @@ function parseWorkbook(file: File) {
 }
 
 function parseBoothRow(row: Record<string, unknown>): ImportCard {
+	const hasProgrammeColumns = [1, 2, 3].some(
+		(index) =>
+			`programme_${index}_title` in row ||
+			`programme_${index}_summary` in row ||
+			`programme_${index}_image` in row,
+	);
 	const programmes = [1, 2, 3]
 		.map((index) => ({
 			title: text(row[`programme_${index}_title`]),
@@ -314,7 +336,12 @@ function parseBoothRow(row: Record<string, unknown>): ImportCard {
 		start: normalizeTime(row.start_time),
 		end: normalizeTime(row.end_time),
 		category: text(row.category),
-		programmes,
+		boothArea: text(row.area).toUpperCase(),
+		boothNumber: text(row.number),
+		images: [1, 2, 3]
+			.map((index) => ({ imageFileName: text(row[`image_${index}`]) }))
+			.filter((image) => image.imageFileName),
+		programmes: hasProgrammeColumns ? programmes : null,
 		socialLinks: SOCIAL_FIELDS.map(({ name }) => ({
 			type: name,
 			url: text(row[name]),
@@ -340,7 +367,10 @@ function boothSnapshot(card: ImportCard) {
 		startTime: card.start,
 		endTime: card.end,
 		category: card.category,
-		programmes: card.programmes,
+		boothArea: card.boothArea,
+		boothNumber: card.boothNumber,
+		images: card.images,
+		...(card.programmes ? { programmes: card.programmes } : {}),
 		socialLinks: socialLinksSnapshot(card.socialLinks),
 	};
 }
@@ -359,11 +389,9 @@ function currentBoothSnapshot(booth: CurrentBooth) {
 		startTime: booth.startTime,
 		endTime: booth.endTime,
 		category: booth.category,
-		programmes: booth.programmes.map(({ title, summary, imageFileName }) => ({
-			title,
-			summary,
-			imageFileName,
-		})),
+		boothArea: booth.boothArea,
+		boothNumber: booth.boothNumber,
+		images: booth.images.map(({ imageFileName }) => ({ imageFileName })),
 		socialLinks: socialLinksSnapshot(booth.socialLinks),
 	};
 }
@@ -433,7 +461,18 @@ function validateCard(card: ImportCard) {
 	if (card.kind === "booth") {
 		if (!(card.category in INTERESTS_MAP))
 			errors.push(`Unknown category: ${card.category || "-"}`);
-		for (const [index, programme] of card.programmes.entries()) {
+		if (!["A", "B", "C"].includes(card.boothArea))
+			errors.push(`Unknown booth area: ${card.boothArea || "-"}`);
+		if (!card.boothNumber) errors.push("Missing booth number");
+		for (const [index, image] of card.images.entries()) {
+			const existingImageFileName = (current as CurrentBooth | undefined)
+				?.images[index]?.imageFileName;
+			const imageChanged = existingImageFileName !== image.imageFileName;
+
+			if (imageChanged && !imageFilesByName.value.has(image.imageFileName))
+				errors.push(`Missing image: ${image.imageFileName}`);
+		}
+		for (const [index, programme] of (card.programmes ?? []).entries()) {
 			if (!programme.title || !programme.summary || !programme.imageFileName) {
 				errors.push("Incomplete programme");
 				continue;
@@ -537,6 +576,7 @@ async function saveImportRecord(
 
 async function saveBooth(card: ImportCard) {
 	const current = currentBooths.value.find((item) => item.refId === card.refId);
+	const programmes = card.programmes ?? current?.programmes ?? [];
 	const body = await saveImportRecord(
 		card,
 		card.existingId ? `/api/booths/${card.existingId}` : "/api/booths",
@@ -545,13 +585,19 @@ async function saveBooth(card: ImportCard) {
 			name: card.name,
 			overview: card.overview,
 			category: card.category,
+			boothArea: card.boothArea,
+			boothNumber: card.boothNumber,
 			buildingId: buildingId(card),
 			floor: card.floor,
 			room: card.room,
 			startTime: card.start,
 			endTime: card.end,
 			socialLinks: card.socialLinks,
-			programmes: card.programmes.map((programme, index) => ({
+			images: card.images.map((image, index) => ({
+				...(current?.images[index]?.id ? { id: current.images[index].id } : {}),
+				...image,
+			})),
+			programmes: programmes.map((programme, index) => ({
 				...(current?.programmes[index]?.id
 					? { id: current.programmes[index].id }
 					: {}),
@@ -561,9 +607,25 @@ async function saveBooth(card: ImportCard) {
 	);
 
 	await Promise.all(
+		(body.data.imageUploadUrls ?? []).map(
+			async (item: { index: number; uploadUrl: string }) => {
+				const fileName = card.images[item.index]?.imageFileName;
+				if (current?.images[item.index]?.imageFileName === fileName) return;
+
+				const file = fileName
+					? imageFilesByName.value.get(fileName)
+					: undefined;
+				if (!file) return;
+
+				await uploadFile(item.uploadUrl, file, `Failed to upload ${file.name}`);
+			},
+		),
+	);
+
+	await Promise.all(
 		(body.data.programmeUploadUrls ?? []).map(
 			async (item: { index: number; uploadUrl: string }) => {
-				const fileName = card.programmes[item.index]?.imageFileName;
+				const fileName = programmes[item.index]?.imageFileName;
 				if (current?.programmes[item.index]?.imageFileName === fileName) return;
 
 				const file = fileName
@@ -657,14 +719,11 @@ async function importCards() {
 						</Field>
 
 						<Field>
-							<FieldLabel for="images">Programme images</FieldLabel>
+							<FieldLabel for="images">Booth and programme images</FieldLabel>
 							<FieldDescription>
 								Matched by exact filename from the workbook.
 							</FieldDescription>
-							<div
-								@dragover.prevent
-								@drop="dropImages"
-							>
+							<div @dragover.prevent @drop="dropImages">
 								<Input
 									id="images"
 									type="file"
@@ -775,6 +834,13 @@ async function importCards() {
 										formatInterest(card.category)
 									}}</span>
 								</div>
+								<div v-if="card.kind === 'booth'" class="contents">
+									<span class="text-muted-foreground">Booth</span>
+									<span class="font-medium">
+										Area {{ card.boothArea || "-" }} / Number
+										{{ card.boothNumber || "-" }}
+									</span>
+								</div>
 							</div>
 
 							<div
@@ -800,8 +866,21 @@ async function importCards() {
 								</div>
 							</div>
 
+							<div v-if="card.images.length" class="grid gap-2 border-t pt-3">
+								<h4 class="text-xs font-medium uppercase text-muted-foreground">
+									Booth images
+								</h4>
+								<p
+									v-for="image in card.images"
+									:key="image.imageFileName"
+									class="break-all font-mono text-xs text-muted-foreground"
+								>
+									{{ image.imageFileName }}
+								</p>
+							</div>
+
 							<div
-								v-if="card.programmes.length"
+								v-if="card.programmes?.length"
 								class="grid gap-2 border-t pt-3"
 							>
 								<h4 class="text-xs font-medium uppercase text-muted-foreground">
