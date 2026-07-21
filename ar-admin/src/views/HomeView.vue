@@ -102,10 +102,6 @@ function wrapText(text: string, font: PDFFont, size: number, maxWidth: number) {
 	return [...lines, line].filter(Boolean);
 }
 
-async function dataUrlBytes(dataUrl: string) {
-	return new Uint8Array(await (await fetch(dataUrl)).arrayBuffer());
-}
-
 function fitPdfText(
 	text: string,
 	font: PDFFont,
@@ -145,7 +141,7 @@ async function createBoothQrPdf(booth: Booth, backgroundBytes: ArrayBuffer) {
 	const page = pdf.addPage([pageWidth, pageHeight]);
 	const font = await pdf.embedFont(StandardFonts.HelveticaBold);
 	const background = await pdf.embedPng(backgroundBytes);
-	const qrImage = await pdf.embedPng(await dataUrlBytes(qrDataUrl));
+	const qrImage = await pdf.embedPng(qrDataUrl);
 	const textX = (20 / 397) * pageWidth;
 	const textTop = (97 / 559) * pageHeight;
 	const textWidth = (357 / 397) * pageWidth;
