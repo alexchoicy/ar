@@ -3,6 +3,7 @@ import type { PDFFont } from "pdf-lib";
 import { onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 
+import qrBackgroundUrl from "@/assets/qr-background.png";
 import { Button } from "@/components/ui/button";
 import {
 	Table,
@@ -105,42 +106,81 @@ async function dataUrlBytes(dataUrl: string) {
 	return new Uint8Array(await (await fetch(dataUrl)).arrayBuffer());
 }
 
-async function createBoothQrPdf(booth: Booth) {
+function fitPdfText(
+	text: string,
+	font: PDFFont,
+	maxWidth: number,
+	maxHeight: number,
+) {
+	for (let size = 40; size >= 18; size--) {
+		const lines = wrapText(text, font, size, maxWidth);
+		const lineHeight = size * 1.1;
+		if (
+			lines.length * lineHeight <= maxHeight &&
+			lines.every((line) => font.widthOfTextAtSize(line, size) <= maxWidth)
+		) {
+			return { lines, lineHeight, size };
+		}
+	}
+
+	return {
+		lines: wrapText(text, font, 18, maxWidth).slice(0, 5),
+		lineHeight: 19.8,
+		size: 18,
+	};
+}
+
+async function createBoothQrPdf(booth: Booth, backgroundBytes: ArrayBuffer) {
 	const [{ default: QRCode }, { PDFDocument, StandardFonts }] =
 		await Promise.all([import("qrcode"), import("pdf-lib")]);
 	const qrDataUrl = await QRCode.toDataURL(booth.qrCode, {
+		color: { light: "#00000000" },
 		errorCorrectionLevel: "H",
 		margin: 2,
 		width: 1600,
 	});
 	const pdf = await PDFDocument.create();
-	const page = pdf.addPage([595.28, 841.89]);
+	const pageWidth = 595.28;
+	const pageHeight = 841.89;
+	const page = pdf.addPage([pageWidth, pageHeight]);
 	const font = await pdf.embedFont(StandardFonts.HelveticaBold);
-	const image = await pdf.embedPng(await dataUrlBytes(qrDataUrl));
-	const titleSize = 48;
-	const codeSize = 28;
-	const titleLines = wrapText(booth.name, font, titleSize, 510).slice(0, 3);
-	const titleY = 750;
-	const codeY = titleY - titleLines.length * 54 - 20;
-	const qrSize = 425;
+	const background = await pdf.embedPng(backgroundBytes);
+	const qrImage = await pdf.embedPng(await dataUrlBytes(qrDataUrl));
+	const textX = (20 / 397) * pageWidth;
+	const textTop = (97 / 559) * pageHeight;
+	const textWidth = (357 / 397) * pageWidth;
+	const textHeight = (73 / 559) * pageHeight;
+	const textBottom = pageHeight - textTop - textHeight;
+	const { lines, lineHeight, size } = fitPdfText(
+		booth.name,
+		font,
+		textWidth,
+		textHeight,
+	);
+	const totalTextHeight = lines.length * lineHeight;
+	const firstLineY =
+		textBottom + (textHeight - totalTextHeight) / 2 + totalTextHeight - size;
+	const qrSize = (273 / 397) * pageWidth;
+	const qrX = (62 / 397) * pageWidth;
+	const qrY = pageHeight - (189 / 559) * pageHeight - qrSize;
 
-	titleLines.forEach((line, index) => {
+	page.drawImage(background, {
+		x: 0,
+		y: 0,
+		width: pageWidth,
+		height: pageHeight,
+	});
+	lines.forEach((line, index) => {
 		page.drawText(line, {
-			x: (595.28 - font.widthOfTextAtSize(line, titleSize)) / 2,
-			y: titleY - index * 54,
-			size: titleSize,
+			x: textX + (textWidth - font.widthOfTextAtSize(line, size)) / 2,
+			y: firstLineY - index * lineHeight,
+			size,
 			font,
 		});
 	});
-	page.drawText(booth.boothCode, {
-		x: (595.28 - font.widthOfTextAtSize(booth.boothCode, codeSize)) / 2,
-		y: codeY,
-		size: codeSize,
-		font,
-	});
-	page.drawImage(image, {
-		x: (595.28 - qrSize) / 2,
-		y: codeY - qrSize - 35,
+	page.drawImage(qrImage, {
+		x: qrX,
+		y: qrY,
 		width: qrSize,
 		height: qrSize,
 	});
@@ -158,12 +198,15 @@ async function downloadQrZip() {
 
 	try {
 		const { default: JSZip } = await import("jszip");
+		const backgroundResponse = await fetch(qrBackgroundUrl);
+		if (!backgroundResponse.ok) throw new Error("Failed to load QR background");
+		const backgroundBytes = await backgroundResponse.arrayBuffer();
 		const zip = new JSZip();
 
 		for (const booth of booths.value) {
 			zip.file(
 				`${fileName(`${booth.boothCode}-${booth.name}`)}.pdf`,
-				await createBoothQrPdf(booth),
+				await createBoothQrPdf(booth, backgroundBytes),
 			);
 		}
 

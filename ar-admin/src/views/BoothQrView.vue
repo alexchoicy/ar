@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import QRCode from "qrcode";
-import { computed, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 
+import qrBackgroundUrl from "@/assets/qr-background.png";
 import { Button } from "@/components/ui/button";
 
 type Booth = {
@@ -17,7 +18,23 @@ const booth = ref<Booth | null>(null);
 const error = ref("");
 const isLoading = ref(true);
 const qrDataUrl = ref("");
+const boothNameElement = ref<HTMLElement | null>(null);
 const title = computed(() => booth.value?.name ?? "Booth QR code");
+
+function fitBoothName() {
+	const element = boothNameElement.value;
+	if (!element) return;
+
+	let size = 48;
+	element.style.fontSize = `${size}px`;
+	while (
+		size > 24 &&
+		(element.scrollHeight > element.clientHeight ||
+			element.scrollWidth > element.clientWidth)
+	) {
+		element.style.fontSize = `${--size}px`;
+	}
+}
 
 function printPage() {
 	window.print();
@@ -32,10 +49,13 @@ onMounted(async () => {
 
 		booth.value = body.data;
 		qrDataUrl.value = await QRCode.toDataURL(body.data.qrCode, {
+			color: { light: "#00000000" },
 			errorCorrectionLevel: "H",
 			margin: 2,
 			width: 1600,
 		});
+		await nextTick();
+		fitBoothName();
 	} catch (caught) {
 		error.value =
 			caught instanceof Error ? caught.message : "Failed to load QR code";
@@ -65,9 +85,9 @@ onMounted(async () => {
 
 		<section v-if="booth && qrDataUrl" class="qr-page">
 			<div class="qr-sheet">
-				<h2>{{ booth.name }}</h2>
-				<p>{{ booth.boothCode }}</p>
-				<img :src="qrDataUrl" :alt="`${booth.name} QR code`" />
+				<img class="qr-background" :src="qrBackgroundUrl" alt="" />
+				<h2 ref="boothNameElement">{{ booth.name }}</h2>
+				<img class="qr-code" :src="qrDataUrl" :alt="`${booth.name} QR code`" />
 			</div>
 		</section>
 	</main>
@@ -86,33 +106,43 @@ onMounted(async () => {
 }
 
 .qr-sheet {
-	display: flex;
+	position: relative;
 	width: 210mm;
-	min-height: 297mm;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	gap: 8mm;
+	height: 297mm;
+	overflow: hidden;
 	background: white;
 	color: black;
-	text-align: center;
 }
 
 .qr-sheet h2 {
-	max-width: 180mm;
-	font-size: 22mm;
+	position: absolute;
+	top: 17.3524%;
+	left: 5.0378%;
+	display: flex;
+	width: 89.9244%;
+	height: 13.059%;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	font-size: 48px;
 	font-weight: 700;
 	line-height: 1.05;
+	text-align: center;
 }
 
-.qr-sheet p {
-	font-size: 10mm;
-	font-weight: 600;
+.qr-background {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
 }
 
-.qr-sheet img {
-	width: 150mm;
-	height: 150mm;
+.qr-code {
+	position: absolute;
+	top: 33.8104%;
+	left: 15.6171%;
+	width: 68.7657%;
+	aspect-ratio: 1;
 }
 
 @media print {
