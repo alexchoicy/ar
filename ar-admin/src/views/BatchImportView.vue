@@ -445,7 +445,6 @@ function validateCard(card: ImportCard) {
 
 	if (!card.refId) errors.push("Missing code");
 	if (!card.name) errors.push("Missing name");
-	if (!card.overview) errors.push("Missing description");
 	if (!building) errors.push(`Unknown building: ${card.buildingCode || "-"}`);
 	if (!card.start) errors.push("Missing start time");
 	else if (!hasValidStart) errors.push("Invalid start time");

@@ -14,7 +14,7 @@ const boothSchema = new Schema(
 		refId: { type: String, trim: true },
 		boothCode: { type: String, required: true, unique: true, trim: true },
 		name: { type: String, required: true, trim: true },
-		overview: { type: String, required: true, trim: true },
+		overview: { type: String, default: "", trim: true },
 		category: { type: String, required: true, trim: true, enum: INTERESTS },
 		boothArea: { type: String, default: "", trim: true },
 		boothNumber: { type: String, default: "", trim: true },

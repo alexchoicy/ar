@@ -115,7 +115,6 @@ onMounted(async () => {
 
 function validateForm() {
 	if (!form.title.trim()) return "Title is required.";
-	if (!form.description.trim()) return "Description is required.";
 	if (!form.buildingId) return "Building is required.";
 	if (!form.startsAt) return "Start time is required.";
 	if (!form.endsAt) return "End time is required.";
@@ -204,7 +203,7 @@ async function save() {
 
 						<Field>
 							<FieldLabel for="description">Description</FieldLabel>
-							<Textarea id="description" v-model="form.description" required />
+							<Textarea id="description" v-model="form.description" />
 						</Field>
 					</FieldGroup>
 				</FieldSet>

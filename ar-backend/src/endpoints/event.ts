@@ -26,7 +26,7 @@ const refIdInput = z.preprocess(
 const eventInputShape = {
 	refId: refIdInput,
 	title: z.string().min(1),
-	description: z.string().min(1),
+	description: z.string(),
 	hidden: z.boolean().optional(),
 	startsAt: z.coerce.date(),
 	endsAt: z.coerce.date(),

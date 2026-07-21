@@ -284,7 +284,6 @@ function resetProgrammeImage(index: number) {
 
 function validateForm() {
 	if (!form.name.trim()) return "Name is required.";
-	if (!form.overview.trim()) return "Overview is required.";
 	if (!form.category) return "Category is required.";
 	if (!form.boothArea) return "Booth area is required.";
 	if (!form.boothNumber.trim()) return "Booth number is required.";
@@ -452,7 +451,7 @@ async function save() {
 
 						<Field>
 							<FieldLabel for="overview">Overview</FieldLabel>
-							<Textarea id="overview" v-model="form.overview" required />
+							<Textarea id="overview" v-model="form.overview" />
 						</Field>
 
 						<Field>

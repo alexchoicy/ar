@@ -47,7 +47,7 @@ const boothInput = z
 	.object({
 		refId: refIdInput,
 		name: z.string().min(1),
-		overview: z.string().min(1),
+		overview: z.string(),
 		category: z.enum(INTERESTS),
 		boothArea: z.string().optional(),
 		boothNumber: z.string().optional(),
