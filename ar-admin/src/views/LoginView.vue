@@ -49,7 +49,7 @@ async function submit() {
 	<main
 		class="flex min-h-screen items-center justify-center bg-muted px-6 py-12"
 	>
-		<form class="w-full max-w-sm" @submit.prevent="submit">
+		<form method="post" class="w-full max-w-sm" @submit.prevent="submit">
 			<Card>
 				<CardHeader class="text-center">
 					<CardTitle>Admin login</CardTitle>

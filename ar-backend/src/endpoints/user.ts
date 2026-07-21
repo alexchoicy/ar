@@ -58,7 +58,6 @@ type RegisterOutput = {
 type UserOutput = {
 	id: string;
 	studentId: string;
-	email: string;
 	name: string;
 	faculty: Faculty;
 	major: string;
@@ -77,7 +76,6 @@ type UserOutput = {
 function toUserOutput(student: {
 	id: string;
 	studentId: string;
-	email: string;
 	name: string;
 	faculty: Faculty;
 	major: string;
@@ -95,7 +93,6 @@ function toUserOutput(student: {
 	return {
 		id: student.id,
 		studentId: student.studentId,
-		email: student.email,
 		name: student.name,
 		faculty: student.faculty,
 		major: student.major,
