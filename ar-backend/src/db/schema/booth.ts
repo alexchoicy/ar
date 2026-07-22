@@ -6,7 +6,7 @@ import type { InferSchemaType } from "mongoose";
 import { INTERESTS } from "../../constants/student.js";
 
 export function createBoothQrCode(id: { toString(): string }) {
-	return createHash("sha256").update(`${id.toString()}WHY ARE U WATCHING`).digest("hex");
+	return `YOU SHOULD BE USING THE APP TO SCAN THIS: SCAN IT IN PROFILE -> E-Stamps -> Scan Qr code: ${createHash("sha256").update(`${id.toString()}WHY ARE U WATCHING`).digest("hex")}`;
 }
 
 const boothSchema = new Schema(
