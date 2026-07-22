@@ -3,7 +3,11 @@ import createHttpError from "http-errors";
 import { Types } from "mongoose";
 import { z } from "zod";
 
-import { FACULTIES, INTERESTS } from "../constants/student.js";
+import {
+	EMPTY_STUDENT_ID,
+	FACULTIES,
+	INTERESTS,
+} from "../constants/student.js";
 import type { Faculty, Interest } from "../constants/student.js";
 import { Booth } from "../db/schema/booth.js";
 import { Event } from "../db/schema/event.js";
@@ -12,7 +16,6 @@ import { requireAuth, requireStudent } from "../middleware/auth.js";
 import { validateBody } from "../middleware/validateBody.js";
 import { signJwt } from "../utils/jwt.js";
 import {
-	decryptUserData,
 	encryptUserData,
 	normalizeEmail,
 	userDataIndex,
@@ -80,7 +83,6 @@ type UserOutput = {
 
 function toUserOutput(student: {
 	id: string;
-	studentId: string;
 	name: string;
 	faculty: Faculty;
 	major: string;
@@ -157,8 +159,13 @@ userRouter.patch(
 		);
 
 		if (req.body.studentId !== undefined) {
-			$set.studentId = encryptUserData(req.body.studentId, "studentId");
-			$set.studentIdIndex = userDataIndex(req.body.studentId, "studentId");
+			$set.studentId =
+				req.body.studentId === EMPTY_STUDENT_ID
+					? null
+					: encryptUserData(req.body.studentId, "studentId");
+			if (req.body.studentId !== EMPTY_STUDENT_ID) {
+				$set.studentIdIndex = userDataIndex(req.body.studentId, "studentId");
+			}
 		}
 
 		if (req.body.email !== undefined) {
@@ -170,7 +177,12 @@ userRouter.patch(
 		const student = Object.keys($set).length
 			? await Student.findOneAndUpdate(
 					{ _id: req.user?.sub },
-					{ $set },
+					{
+						$set,
+						...(req.body.studentId === EMPTY_STUDENT_ID
+							? { $unset: { studentIdIndex: 1 } }
+							: {}),
+					},
 					{ new: true, runValidators: true },
 				)
 			: await getCurrentStudent(req.user?.sub);
@@ -337,8 +349,13 @@ userRouter.post("/register", validateBody(registerInput), async (req, res) => {
 	const email = normalizeEmail(req.body.email);
 	const student = await Student.create({
 		...req.body,
-		studentId: encryptUserData(req.body.studentId, "studentId"),
-		studentIdIndex: userDataIndex(req.body.studentId, "studentId"),
+		studentId:
+			req.body.studentId === EMPTY_STUDENT_ID
+				? null
+				: encryptUserData(req.body.studentId, "studentId"),
+		...(req.body.studentId === EMPTY_STUDENT_ID
+			? {}
+			: { studentIdIndex: userDataIndex(req.body.studentId, "studentId") }),
 		email: encryptUserData(email, "email"),
 		emailIndex: userDataIndex(email, "email"),
 	});

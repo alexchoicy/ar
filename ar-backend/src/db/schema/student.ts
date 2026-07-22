@@ -5,8 +5,8 @@ import { FACULTIES, INTERESTS } from "../../constants/student.js";
 
 const studentSchema = new Schema(
 	{
-		studentId: { type: String, required: true },
-		studentIdIndex: { type: String, required: true },
+		studentId: { type: String, default: null },
+		studentIdIndex: { type: String },
 		email: { type: String, required: true },
 		emailIndex: { type: String, required: true },
 		name: { type: String, required: true, trim: true },
@@ -38,7 +38,7 @@ const studentSchema = new Schema(
 	{ timestamps: true },
 );
 
-studentSchema.index({ studentIdIndex: 1 }, { unique: true });
+studentSchema.index({ studentIdIndex: 1 }, { unique: true, sparse: true });
 studentSchema.index({ emailIndex: 1 }, { unique: true });
 
 export type StudentDocument = InferSchemaType<typeof studentSchema>;

@@ -9,6 +9,8 @@ export const FACULTIES = [
 	"continuing_education",
 ] as const;
 
+export const EMPTY_STUDENT_ID = "00000000";
+
 export const INTERESTS = [
 	"academic_soc",
 	"sports_athletics",

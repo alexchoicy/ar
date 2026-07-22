@@ -2,15 +2,12 @@ import { Router } from "express";
 import createHttpError from "http-errors";
 import { z } from "zod";
 
+import { EMPTY_STUDENT_ID } from "../constants/student.js";
 import { Student } from "../db/schema/student.js";
 import { adminAuthCookie, requireAdmin } from "../middleware/auth.js";
 import { validateBody } from "../middleware/validateBody.js";
 import { signJwt } from "../utils/jwt.js";
-import {
-	decryptUserData,
-	normalizeEmail,
-	userDataIndex,
-} from "../utils/userDataEncryption.js";
+import { normalizeEmail, userDataIndex } from "../utils/userDataEncryption.js";
 
 export const authRouter = Router();
 export const adminAuthRouter = Router();
@@ -45,7 +42,9 @@ function toAdminUser(name: string) {
 authRouter.post("/login", validateBody(loginInput), async (req, res) => {
 	const email = normalizeEmail(req.body.email);
 	const student = await Student.findOne({
-		studentIdIndex: userDataIndex(req.body.studentId, "studentId"),
+		...(req.body.studentId === EMPTY_STUDENT_ID
+			? { studentId: null }
+			: { studentIdIndex: userDataIndex(req.body.studentId, "studentId") }),
 		emailIndex: userDataIndex(email, "email"),
 	});
 
