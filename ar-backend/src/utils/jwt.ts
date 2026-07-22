@@ -5,7 +5,6 @@ export type JwtPayload = StudentJwtPayload | AdminJwtPayload;
 type StudentJwtPayload = {
 	sub: string;
 	role: "student";
-	studentId: string;
 };
 
 type AdminJwtPayload = {

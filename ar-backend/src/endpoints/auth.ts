@@ -6,6 +6,11 @@ import { Student } from "../db/schema/student.js";
 import { adminAuthCookie, requireAdmin } from "../middleware/auth.js";
 import { validateBody } from "../middleware/validateBody.js";
 import { signJwt } from "../utils/jwt.js";
+import {
+	decryptUserData,
+	normalizeEmail,
+	userDataIndex,
+} from "../utils/userDataEncryption.js";
 
 export const authRouter = Router();
 export const adminAuthRouter = Router();
@@ -38,9 +43,10 @@ function toAdminUser(name: string) {
 }
 
 authRouter.post("/login", validateBody(loginInput), async (req, res) => {
+	const email = normalizeEmail(req.body.email);
 	const student = await Student.findOne({
-		studentId: req.body.studentId,
-		email: req.body.email.toLowerCase(),
+		studentIdIndex: userDataIndex(req.body.studentId, "studentId"),
+		emailIndex: userDataIndex(email, "email"),
 	});
 
 	if (!student) {
@@ -51,12 +57,10 @@ authRouter.post("/login", validateBody(loginInput), async (req, res) => {
 		token: signJwt({
 			sub: student.id,
 			role: "student",
-			studentId: student.studentId,
 		}),
 		user: {
 			id: student.id,
 			role: "student",
-			studentId: student.studentId,
 			name: student.name,
 			faculty: student.faculty,
 			major: student.major,

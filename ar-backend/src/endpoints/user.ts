@@ -11,6 +11,12 @@ import { Student } from "../db/schema/student.js";
 import { requireAuth, requireStudent } from "../middleware/auth.js";
 import { validateBody } from "../middleware/validateBody.js";
 import { signJwt } from "../utils/jwt.js";
+import {
+	decryptUserData,
+	encryptUserData,
+	normalizeEmail,
+	userDataIndex,
+} from "../utils/userDataEncryption.js";
 
 export const userRouter = Router();
 
@@ -57,7 +63,6 @@ type RegisterOutput = {
 
 type UserOutput = {
 	id: string;
-	studentId: string;
 	name: string;
 	faculty: Faculty;
 	major: string;
@@ -92,7 +97,6 @@ function toUserOutput(student: {
 }): UserOutput {
 	return {
 		id: student.id,
-		studentId: student.studentId,
 		name: student.name,
 		faculty: student.faculty,
 		major: student.major,
@@ -107,12 +111,10 @@ function toUserOutput(student: {
 		surveySubmittedAt: student.surveySubmittedAt ?? null,
 		redeemed: {
 			minorGift: {
-				redeemedDateTime:
-					student.redeemed?.minorGift?.redeemedDateTime ?? null,
+				redeemedDateTime: student.redeemed?.minorGift?.redeemedDateTime ?? null,
 			},
 			majorGift: {
-				redeemedDateTime:
-					student.redeemed?.majorGift?.redeemedDateTime ?? null,
+				redeemedDateTime: student.redeemed?.majorGift?.redeemedDateTime ?? null,
 			},
 		},
 	};
@@ -150,9 +152,21 @@ userRouter.patch(
 	requireStudent,
 	validateBody(profileInput),
 	async (req, res) => {
-		const $set = Object.fromEntries(
+		const $set: Record<string, unknown> = Object.fromEntries(
 			Object.entries(req.body).filter(([, value]) => value !== undefined),
 		);
+
+		if (req.body.studentId !== undefined) {
+			$set.studentId = encryptUserData(req.body.studentId, "studentId");
+			$set.studentIdIndex = userDataIndex(req.body.studentId, "studentId");
+		}
+
+		if (req.body.email !== undefined) {
+			const email = normalizeEmail(req.body.email);
+			$set.email = encryptUserData(email, "email");
+			$set.emailIndex = userDataIndex(email, "email");
+		}
+
 		const student = Object.keys($set).length
 			? await Student.findOneAndUpdate(
 					{ _id: req.user?.sub },
@@ -320,11 +334,17 @@ userRouter.post(
 );
 
 userRouter.post("/register", validateBody(registerInput), async (req, res) => {
-	const student = await Student.create(req.body);
+	const email = normalizeEmail(req.body.email);
+	const student = await Student.create({
+		...req.body,
+		studentId: encryptUserData(req.body.studentId, "studentId"),
+		studentIdIndex: userDataIndex(req.body.studentId, "studentId"),
+		email: encryptUserData(email, "email"),
+		emailIndex: userDataIndex(email, "email"),
+	});
 	const token = signJwt({
 		sub: student.id,
 		role: "student",
-		studentId: student.studentId,
 	});
 	const output: RegisterOutput = {
 		token,
