@@ -13,9 +13,23 @@ const app = express();
 const port = Number(process.env.PORT) || 3000;
 const publicDir = fileURLToPath(new URL("../public", import.meta.url));
 const adminIndex = path.join(publicDir, "admin", "index.html");
+const blobAccountName = process.env.AZURE_STORAGE_BLOB_ACCOUNT_NAME;
 
 app.disable("x-powered-by");
-app.use(helmet()); //this will be removed after dev
+app.use(
+	helmet({
+		contentSecurityPolicy: {
+			directives: {
+				connectSrc: [
+					"'self'",
+					...(blobAccountName
+						? [`https://${blobAccountName}.blob.core.windows.net`]
+						: []),
+				],
+			},
+		},
+	}),
+);
 app.use(express.json());
 app.use(httpLogger);
 app.use(responseMiddleware);
