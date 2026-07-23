@@ -14,18 +14,17 @@ const port = Number(process.env.PORT) || 3000;
 const publicDir = fileURLToPath(new URL("../public", import.meta.url));
 const adminIndex = path.join(publicDir, "admin", "index.html");
 const blobAccountName = process.env.AZURE_STORAGE_BLOB_ACCOUNT_NAME;
+const blobSources = blobAccountName
+	? [`https://${blobAccountName}.blob.core.windows.net`]
+	: [];
 
 app.disable("x-powered-by");
 app.use(
 	helmet({
 		contentSecurityPolicy: {
 			directives: {
-				connectSrc: [
-					"'self'",
-					...(blobAccountName
-						? [`https://${blobAccountName}.blob.core.windows.net`]
-						: []),
-				],
+				connectSrc: ["'self'", ...blobSources],
+				imgSrc: ["'self'", "data:", ...blobSources],
 			},
 		},
 	}),
