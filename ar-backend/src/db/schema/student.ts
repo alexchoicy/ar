@@ -11,7 +11,7 @@ const studentSchema = new Schema(
 		emailIndex: { type: String, required: true },
 		name: { type: String, required: true, trim: true },
 		faculty: { type: String, required: true, trim: true, enum: FACULTIES },
-		major: { type: String, required: true, trim: true },
+		major: { type: String, trim: true },
 		yearOfStudy: { type: Number, required: true, min: 1 },
 		interests: { type: [{ type: String, enum: INTERESTS }], default: [] },
 		eStamps: {

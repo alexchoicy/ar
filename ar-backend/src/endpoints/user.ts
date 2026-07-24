@@ -28,7 +28,7 @@ const registerInput = z.object({
 	email: z.email(),
 	name: z.string().min(1),
 	faculty: z.enum(FACULTIES),
-	major: z.string().min(1),
+	major: z.string().min(1).optional(),
 	yearOfStudy: z.number().int().default(1),
 	interests: z.array(z.enum(INTERESTS)).default([]),
 });
@@ -68,7 +68,7 @@ type UserOutput = {
 	id: string;
 	name: string;
 	faculty: Faculty;
-	major: string;
+	major?: string;
 	yearOfStudy: number;
 	interests: Interest[];
 	eStamps: { boothId: string; dateTime: Date }[];
@@ -85,7 +85,7 @@ function toUserOutput(student: {
 	id: string;
 	name: string;
 	faculty: Faculty;
-	major: string;
+	major?: string;
 	yearOfStudy: number;
 	interests: Interest[];
 	eStamps: { id: { toString(): string }; dateTime: Date }[];
