@@ -16,6 +16,7 @@ export const locationRouter = Router();
 
 const createLocationInput = z.object({
 	name: z.string().min(1),
+	realName: z.string().default(""),
 	buildingId: z
 		.string()
 		.refine(Types.ObjectId.isValid, "buildingId must be a valid ObjectId"),
@@ -98,6 +99,7 @@ export function toLocationOutput(
 	return {
 		id: location._id.toString(),
 		name: location.name,
+		realName: location.realName ?? "",
 		floor: location.floor,
 		room: location.room,
 		tag: location.tag,
@@ -201,6 +203,7 @@ locationRouter.post(
 		return res.api(201, {
 			id: location.id,
 			name: location.name,
+			realName: location.realName ?? "",
 			buildingId: location.buildingId.toString(),
 			floor: location.floor,
 			room: location.room,

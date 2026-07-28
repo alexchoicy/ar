@@ -13,6 +13,7 @@ export const LOCATION_TAGS = [
 const locationSchema = new Schema(
 	{
 		name: { type: String, required: true, trim: true },
+		realName: { type: String, default: "", trim: true },
 		buildingId: { type: Schema.Types.ObjectId, ref: "Building", required: true },
 		floor: { type: String, trim: true },
 		room: { type: String, trim: true },
