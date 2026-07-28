@@ -62,7 +62,7 @@ authRouter.post("/login", validateBody(loginInput), async (req, res) => {
 			role: "student",
 			name: student.name,
 			faculty: student.faculty,
-			major: student.major,
+			major: student.major ?? "",
 			yearOfStudy: student.yearOfStudy,
 			interests: student.interests,
 		},

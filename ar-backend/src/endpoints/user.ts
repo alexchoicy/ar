@@ -28,7 +28,7 @@ const registerInput = z.object({
 	email: z.email(),
 	name: z.string().min(1),
 	faculty: z.enum(FACULTIES),
-	major: z.string().min(1).optional(),
+	major: z.string().optional(),
 	yearOfStudy: z.number().int().default(1),
 	interests: z.array(z.enum(INTERESTS)).default([]),
 });
@@ -41,7 +41,7 @@ const profileInput = z.object({
 	email: z.email().optional(),
 	name: z.string().min(1).optional(),
 	faculty: z.enum(FACULTIES).optional(),
-	major: z.string().min(1).optional(),
+	major: z.string().optional(),
 	yearOfStudy: z.number().int().min(1).optional(),
 	interests: z.array(z.enum(INTERESTS)).optional(),
 });
@@ -68,7 +68,7 @@ type UserOutput = {
 	id: string;
 	name: string;
 	faculty: Faculty;
-	major?: string;
+	major: string;
 	yearOfStudy: number;
 	interests: Interest[];
 	eStamps: { boothId: string; dateTime: Date }[];
@@ -85,7 +85,7 @@ function toUserOutput(student: {
 	id: string;
 	name: string;
 	faculty: Faculty;
-	major?: string;
+	major?: string | null;
 	yearOfStudy: number;
 	interests: Interest[];
 	eStamps: { id: { toString(): string }; dateTime: Date }[];
@@ -101,7 +101,7 @@ function toUserOutput(student: {
 		id: student.id,
 		name: student.name,
 		faculty: student.faculty,
-		major: student.major,
+		major: student.major ?? "",
 		yearOfStudy: student.yearOfStudy,
 		interests: student.interests,
 		eStamps: student.eStamps.map((stamp) => ({
