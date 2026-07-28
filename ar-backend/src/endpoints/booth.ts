@@ -158,7 +158,7 @@ function buildProgrammes(
 	return { programmes, uploadObjects };
 }
 
-function toBoothDetailOutput(booth: any, location: any, building: any) {
+export function toBoothDetailOutput(booth: any, location: any, building: any) {
 	return {
 		...toBoothOutput(booth),
 		location: location ? toLocationOutput(location, building) : null,
