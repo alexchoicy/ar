@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 
+import { Booth } from "./schema/booth.js";
 import { Student } from "./schema/student.js";
 import { Suggestion } from "./schema/suggestion.js";
 
@@ -23,6 +24,7 @@ export async function connectDb() {
 	}
 
 	await mongoose.connect(connectionString, { dbName: databaseName });
+	await Booth.syncIndexes();
 	await Student.syncIndexes();
 	await Suggestion.syncIndexes();
 }

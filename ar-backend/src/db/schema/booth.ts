@@ -58,7 +58,6 @@ const boothSchema = new Schema(
 				return createBoothQrCode(this._id);
 			},
 			required: true,
-			unique: true,
 			trim: true,
 		},
 	},
