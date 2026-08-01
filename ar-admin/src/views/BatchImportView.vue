@@ -460,9 +460,8 @@ function validateCard(card: ImportCard) {
 	if (card.kind === "booth") {
 		if (!(card.category in INTERESTS_MAP))
 			errors.push(`Unknown category: ${card.category || "-"}`);
-		if (!["A", "B", "C"].includes(card.boothArea))
+		if (card.boothArea && !["A", "B", "C"].includes(card.boothArea))
 			errors.push(`Unknown booth area: ${card.boothArea || "-"}`);
-		if (!card.boothNumber) errors.push("Missing booth number");
 		for (const [index, image] of card.images.entries()) {
 			const existingImageFileName = (current as CurrentBooth | undefined)
 				?.images[index]?.imageFileName;

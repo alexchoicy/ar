@@ -285,8 +285,6 @@ function resetProgrammeImage(index: number) {
 function validateForm() {
 	if (!form.name.trim()) return "Name is required.";
 	if (!form.category) return "Category is required.";
-	if (!form.boothArea) return "Booth area is required.";
-	if (!form.boothNumber.trim()) return "Booth number is required.";
 	if (!form.buildingId) return "Building is required.";
 	if (!form.startTime) return "Start time is required.";
 	if (!form.endTime) return "End time is required.";
@@ -493,7 +491,7 @@ async function save() {
 						<div class="grid gap-4 sm:grid-cols-2">
 							<Field>
 								<FieldLabel for="booth-area">Booth area</FieldLabel>
-								<Select v-model="form.boothArea" required>
+								<Select v-model="form.boothArea">
 									<SelectTrigger id="booth-area" class="w-full">
 										<SelectValue placeholder="Select area" />
 									</SelectTrigger>
@@ -511,7 +509,7 @@ async function save() {
 
 							<Field>
 								<FieldLabel for="booth-number">Booth number</FieldLabel>
-								<Input id="booth-number" v-model="form.boothNumber" required />
+								<Input id="booth-number" v-model="form.boothNumber" />
 							</Field>
 						</div>
 					</FieldGroup>
