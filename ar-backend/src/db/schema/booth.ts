@@ -65,8 +65,7 @@ const boothSchema = new Schema(
 );
 
 boothSchema.index({ refId: 1 }, { unique: true, sparse: true });
-boothSchema.index({ priority: -1, name: 1 });
-boothSchema.index({ locationId: 1, priority: -1, name: 1 });
+boothSchema.index({ locationId: 1 });
 
 export type BoothDocument = InferSchemaType<typeof boothSchema>;
 

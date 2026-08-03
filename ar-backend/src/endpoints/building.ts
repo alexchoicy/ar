@@ -6,7 +6,12 @@ import { Booth } from "../db/schema/booth.js";
 import { Building } from "../db/schema/building.js";
 import { Event } from "../db/schema/event.js";
 import { Location } from "../db/schema/location.js";
-import { groupByLocation, toBuildingOutput, toLocationOutput } from "./location.js";
+import {
+	compareBooths,
+	groupByLocation,
+	toBuildingOutput,
+	toLocationOutput,
+} from "./location.js";
 
 export const buildingRouter = Router();
 
@@ -33,10 +38,11 @@ buildingRouter.get("/:id", async (req, res) => {
 	const locationIds = locations.map((location) => location._id);
 	const [booths, events] = locationIds.length
 		? await Promise.all([
-				Booth.find({ locationId: { $in: locationIds } }).sort({ priority: -1, name: 1 }).lean(),
+				Booth.find({ locationId: { $in: locationIds } }).lean(),
 				Event.find({ locationId: { $in: locationIds } }).sort({ startsAt: 1 }).lean(),
 			])
 		: [[], []];
+	booths.sort(compareBooths);
 	const boothsByLocation = groupByLocation(booths);
 	const eventsByLocation = groupByLocation(events);
 

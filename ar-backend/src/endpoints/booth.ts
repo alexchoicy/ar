@@ -13,6 +13,7 @@ import { validateBody } from "../middleware/validateBody.js";
 import { createUploadUrl, sanitizeBlobFileName } from "../utils/blob.js";
 import { deleteRecordById } from "./helpers.js";
 import {
+	compareBooths,
 	findOrCreateLocation,
 	toBoothOutput,
 	toLocationOutput,
@@ -185,7 +186,8 @@ async function getLocationAndBuilding(locationId: any) {
 }
 
 boothRouter.get("/", async (_req, res) => {
-	const booths = await Booth.find().sort({ priority: -1, name: 1 }).lean();
+	const booths = await Booth.find().lean();
+	booths.sort(compareBooths);
 	const locations = await Location.find({
 		_id: { $in: booths.flatMap((booth) => booth.locationId ?? []) },
 	}).lean();

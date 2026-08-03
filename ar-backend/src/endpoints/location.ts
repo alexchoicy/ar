@@ -39,6 +39,18 @@ export function groupByLocation<
 	return grouped;
 }
 
+export function compareBooths(
+	a: { boothArea?: string | null; boothNumber?: string | null },
+	b: { boothArea?: string | null; boothNumber?: string | null },
+) {
+	return (
+		Number(!a.boothArea) - Number(!b.boothArea) ||
+		(a.boothArea ?? "").localeCompare(b.boothArea ?? "") ||
+		Number(!a.boothNumber) - Number(!b.boothNumber) ||
+		(a.boothNumber ?? "").localeCompare(b.boothNumber ?? "")
+	);
+}
+
 export function toBuildingOutput(building: any) {
 	return {
 		id: building._id.toString(),
@@ -172,11 +184,10 @@ locationRouter.get("/:id", async (req, res) => {
 
 	const [location, booths, events] = await Promise.all([
 		Location.findById(req.params.id).lean(),
-		Booth.find({ locationId: req.params.id })
-			.sort({ priority: -1, name: 1 })
-			.lean(),
+		Booth.find({ locationId: req.params.id }).lean(),
 		Event.find({ locationId: req.params.id }).sort({ startsAt: 1 }).lean(),
 	]);
+	booths.sort(compareBooths);
 
 	if (!location) {
 		throw createHttpError(404, "Location not found");
