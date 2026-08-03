@@ -137,6 +137,7 @@ const form = reactive({
 	social_facebook: "",
 	social_youtube: "",
 	social_twitter: "",
+	social_linkedin: "",
 	social_rednote: "",
 	social_website: "",
 });
@@ -145,13 +146,7 @@ onMounted(async () => {
 	try {
 		buildings.value = await fetchBuildings();
 
-		if (isCreate.value) {
-			form.buildingId =
-				buildings.value.find(
-					(building) => building.shortCode === "LI_PROMENADE",
-				)?.id ?? "";
-			return;
-		}
+		if (isCreate.value) return;
 
 		const boothResponse = await fetch(`/api/booths/${route.params.id}`);
 		const boothBody = await boothResponse.json();
@@ -285,7 +280,6 @@ function resetProgrammeImage(index: number) {
 function validateForm() {
 	if (!form.name.trim()) return "Name is required.";
 	if (!form.category) return "Category is required.";
-	if (!form.buildingId) return "Building is required.";
 	if (!form.startTime) return "Start time is required.";
 	if (!form.endTime) return "End time is required.";
 	if (form.startTime >= form.endTime)
@@ -488,30 +482,6 @@ async function save() {
 							</Combobox>
 						</Field>
 
-						<div class="grid gap-4 sm:grid-cols-2">
-							<Field>
-								<FieldLabel for="booth-area">Booth area</FieldLabel>
-								<Select v-model="form.boothArea">
-									<SelectTrigger id="booth-area" class="w-full">
-										<SelectValue placeholder="Select area" />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem
-											v-for="area in boothAreas"
-											:key="area"
-											:value="area"
-										>
-											{{ area }}
-										</SelectItem>
-									</SelectContent>
-								</Select>
-							</Field>
-
-							<Field>
-								<FieldLabel for="booth-number">Booth number</FieldLabel>
-								<Input id="booth-number" v-model="form.boothNumber" />
-							</Field>
-						</div>
 					</FieldGroup>
 				</FieldSet>
 
@@ -574,8 +544,44 @@ async function save() {
 				<FieldSet>
 					<FieldLegend>Location & Time</FieldLegend>
 					<FieldGroup>
+						<div class="grid gap-4 sm:grid-cols-2">
+							<Field>
+							<FieldLabel for="booth-area">Booth area</FieldLabel>
+							<FieldDescription>Optional.</FieldDescription>
+							<Select v-model="form.boothArea">
+								<SelectTrigger id="booth-area" class="w-full">
+									<SelectValue placeholder="Select area" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem
+										v-for="area in boothAreas"
+										:key="area"
+										:value="area"
+									>
+										{{ area }}
+									</SelectItem>
+								</SelectContent>
+							</Select>
+							<Button
+								v-if="form.boothArea"
+								type="button"
+								variant="outline"
+								@click="form.boothArea = ''"
+							>
+								Clear booth area
+							</Button>
+							</Field>
+
+							<Field>
+								<FieldLabel for="booth-number">Booth number</FieldLabel>
+								<FieldDescription>Optional.</FieldDescription>
+								<Input id="booth-number" v-model="form.boothNumber" />
+							</Field>
+						</div>
+
 						<Field>
 							<FieldLabel for="building">Building</FieldLabel>
+							<FieldDescription>Optional.</FieldDescription>
 							<Combobox v-model="selectedBuilding" by="id">
 								<ComboboxAnchor as-child>
 									<ComboboxTrigger as-child>
@@ -612,6 +618,14 @@ async function save() {
 									</ComboboxViewport>
 								</ComboboxList>
 							</Combobox>
+							<Button
+								v-if="selectedBuilding"
+								type="button"
+								variant="outline"
+								@click="selectedBuilding = undefined"
+							>
+								Clear building
+							</Button>
 						</Field>
 
 						<div class="grid gap-4 sm:grid-cols-2">

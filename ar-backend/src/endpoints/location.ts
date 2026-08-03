@@ -26,11 +26,12 @@ const createLocationInput = z.object({
 });
 
 export function groupByLocation<
-	T extends { locationId: { toString(): string } },
+	T extends { locationId?: { toString(): string } | null },
 >(items: T[]) {
 	const grouped = new Map<string, T[]>();
 
 	for (const item of items) {
+		if (!item.locationId) continue;
 		const key = item.locationId.toString();
 		grouped.set(key, [...(grouped.get(key) ?? []), item]);
 	}

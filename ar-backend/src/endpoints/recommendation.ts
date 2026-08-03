@@ -26,7 +26,7 @@ recommendationRouter.get("/", async (_req, res) => {
 		return booth ? [booth] : [];
 	});
 	const locations = await Location.find({
-		_id: { $in: orderedBooths.map((booth) => booth.locationId) },
+		_id: { $in: orderedBooths.flatMap((booth) => booth.locationId ?? []) },
 	}).lean();
 	const buildings = await Building.find({
 		_id: { $in: locations.map((location) => location.buildingId) },
@@ -41,7 +41,9 @@ recommendationRouter.get("/", async (_req, res) => {
 	return res.api(
 		200,
 		orderedBooths.map((booth) => {
-			const location = locationsById.get(booth.locationId.toString());
+			const location = booth.locationId
+				? locationsById.get(booth.locationId.toString())
+				: undefined;
 
 			return toBoothDetailOutput(
 				booth,

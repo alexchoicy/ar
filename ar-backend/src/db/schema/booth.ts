@@ -18,7 +18,7 @@ const boothSchema = new Schema(
 		category: { type: String, required: true, trim: true, enum: INTERESTS },
 		boothArea: { type: String, default: "", trim: true },
 		boothNumber: { type: String, default: "", trim: true },
-		locationId: { type: Schema.Types.ObjectId, ref: "Location", required: true },
+		locationId: { type: Schema.Types.ObjectId, ref: "Location" },
 		startTime: { type: String, required: true, trim: true },
 		endTime: { type: String, required: true, trim: true },
 		tags: { type: [String], default: [] },

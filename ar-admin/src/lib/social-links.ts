@@ -3,6 +3,7 @@ export const SOCIAL_FIELDS = [
 	{ name: "social_facebook", label: "Facebook" },
 	{ name: "social_youtube", label: "YouTube" },
 	{ name: "social_twitter", label: "Twitter" },
+	{ name: "social_linkedin", label: "LinkedIn" },
 	{ name: "social_rednote", label: "RedNote" },
 	{ name: "social_website", label: "Website" },
 ] as const;
@@ -14,6 +15,7 @@ const socialHosts: Record<SocialFieldName, string[]> = {
 	social_facebook: ["facebook.com", "fb.com"],
 	social_youtube: ["youtube.com", "youtu.be"],
 	social_twitter: ["twitter.com", "x.com"],
+	social_linkedin: ["linkedin.com"],
 	social_rednote: ["xiaohongshu.com", "xhslink.com", "rednote.com"],
 	social_website: [],
 };

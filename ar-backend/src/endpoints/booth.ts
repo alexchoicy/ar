@@ -51,9 +51,13 @@ const boothInput = z
 		category: z.enum(INTERESTS),
 		boothArea: z.string().optional(),
 		boothNumber: z.string().optional(),
-		buildingId: z
-			.string()
-			.refine(Types.ObjectId.isValid, "buildingId must be a valid ObjectId"),
+		buildingId: z.preprocess(
+			(value) => (value === "" ? undefined : value),
+			z
+				.string()
+				.refine(Types.ObjectId.isValid, "buildingId must be a valid ObjectId")
+				.optional(),
+		),
 		floor: z.string().default(""),
 		room: z.string().default(""),
 		startTime: z.string().min(1),
@@ -166,6 +170,8 @@ export function toBoothDetailOutput(booth: any, location: any, building: any) {
 }
 
 async function getLocationAndBuilding(locationId: any) {
+	if (!locationId) return { location: null, building: null };
+
 	const location = await Location.findById(locationId).lean();
 
 	if (!location) {
@@ -181,7 +187,7 @@ async function getLocationAndBuilding(locationId: any) {
 boothRouter.get("/", async (_req, res) => {
 	const booths = await Booth.find().sort({ priority: -1, name: 1 }).lean();
 	const locations = await Location.find({
-		_id: { $in: booths.map((booth) => booth.locationId) },
+		_id: { $in: booths.flatMap((booth) => booth.locationId ?? []) },
 	}).lean();
 	const buildings = await Building.find({
 		_id: { $in: locations.map((location) => location.buildingId) },
@@ -196,7 +202,9 @@ boothRouter.get("/", async (_req, res) => {
 	return res.api(
 		200,
 		booths.map((booth) => {
-			const location = locationsById.get(booth.locationId.toString());
+			const location = booth.locationId
+				? locationsById.get(booth.locationId.toString())
+				: undefined;
 
 			return toBoothDetailOutput(
 				booth,
@@ -229,11 +237,13 @@ boothRouter.post(
 	validateBody(boothInput),
 	async (req, res) => {
 		const boothId = new Types.ObjectId();
-		const { location, building } = await findOrCreateLocation(
-			req.body.buildingId,
-			req.body.floor,
-			req.body.room,
-		);
+		const { location, building } = req.body.buildingId
+			? await findOrCreateLocation(
+					req.body.buildingId,
+					req.body.floor,
+					req.body.room,
+				)
+			: { location: null, building: null };
 		const { programmes, uploadObjects } = buildProgrammes(
 			boothId.toString(),
 			req.body.programmes,
@@ -251,7 +261,7 @@ boothRouter.post(
 			category: req.body.category,
 			boothArea: req.body.boothArea ?? "",
 			boothNumber: req.body.boothNumber ?? "",
-			locationId: location._id,
+			...(location ? { locationId: location._id } : {}),
 			startTime: req.body.startTime,
 			endTime: req.body.endTime,
 			images,
@@ -295,11 +305,13 @@ boothRouter.put(
 			throw createHttpError(404, "Booth not found");
 		}
 
-		const { location, building } = await findOrCreateLocation(
-			req.body.buildingId,
-			req.body.floor,
-			req.body.room,
-		);
+		const { location, building } = req.body.buildingId
+			? await findOrCreateLocation(
+					req.body.buildingId,
+					req.body.floor,
+					req.body.room,
+				)
+			: { location: null, building: null };
 		const { programmes, uploadObjects } = buildProgrammes(
 			id,
 			req.body.programmes,
@@ -312,21 +324,24 @@ boothRouter.put(
 			name: req.body.name,
 			overview: req.body.overview,
 			category: req.body.category,
-			locationId: location._id,
 			startTime: req.body.startTime,
 			endTime: req.body.endTime,
 			programmes,
 			socialLinks: req.body.socialLinks,
 		};
+		if (location) $set.locationId = location._id;
 		if (req.body.boothArea !== undefined) $set.boothArea = req.body.boothArea;
 		if (req.body.boothNumber !== undefined)
 			$set.boothNumber = req.body.boothNumber;
 		if (req.body.images !== undefined) $set.images = imageResult.images;
 		if (req.body.refId) $set.refId = req.body.refId;
 
+		const $unset: Record<string, ""> = {};
+		if (!req.body.refId) $unset.refId = "";
+		if (!location) $unset.locationId = "";
 		const booth = await Booth.findByIdAndUpdate(
 			id,
-			req.body.refId ? { $set } : { $set, $unset: { refId: "" } },
+			Object.keys($unset).length ? { $set, $unset } : { $set },
 			{ new: true },
 		).lean();
 
