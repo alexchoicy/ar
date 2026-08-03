@@ -40,12 +40,23 @@ export function groupByLocation<
 }
 
 export function compareBooths(
-	a: { boothArea?: string | null; boothNumber?: string | null },
-	b: { boothArea?: string | null; boothNumber?: string | null },
+	a: {
+		boothArea?: string | null;
+		boothNumber?: string | null;
+		locationId?: unknown;
+	},
+	b: {
+		boothArea?: string | null;
+		boothNumber?: string | null;
+		locationId?: unknown;
+	},
 ) {
 	return (
 		Number(!a.boothArea) - Number(!b.boothArea) ||
 		(a.boothArea ?? "").localeCompare(b.boothArea ?? "") ||
+		(!a.boothArea && !b.boothArea
+			? Number(!a.locationId) - Number(!b.locationId)
+			: 0) ||
 		Number(!a.boothNumber) - Number(!b.boothNumber) ||
 		(a.boothNumber ?? "").localeCompare(b.boothNumber ?? "", undefined, {
 			numeric: true,
