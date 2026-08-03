@@ -250,6 +250,13 @@ userRouter.post(
 	requireStudent,
 	validateBody(stampInput),
 	async (req, res) => {
+		if (req.body.id === process.env.TEMP_REDEEM_KEY) {
+			throw createHttpError(
+				400,
+				"YOU SHOULD BE USING THE APP TO SCAN THIS: SCAN IT IN PROFILE -> E-Stamps -> Price Reward Milestones",
+			);
+		}
+
 		const booth = await Booth.findOne({ qrCode: req.body.id });
 
 		if (!booth) {
