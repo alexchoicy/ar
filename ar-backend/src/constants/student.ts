@@ -25,6 +25,7 @@ export const INTERESTS = [
 	"career_entrepreneur",
 	"media_journalism",
 	"student_services",
+	"interest_club",
 	"office",
 	"gift",
 ] as const;
