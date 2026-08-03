@@ -47,7 +47,9 @@ export function compareBooths(
 		Number(!a.boothArea) - Number(!b.boothArea) ||
 		(a.boothArea ?? "").localeCompare(b.boothArea ?? "") ||
 		Number(!a.boothNumber) - Number(!b.boothNumber) ||
-		(a.boothNumber ?? "").localeCompare(b.boothNumber ?? "")
+		(a.boothNumber ?? "").localeCompare(b.boothNumber ?? "", undefined, {
+			numeric: true,
+		})
 	);
 }
 
