@@ -6,6 +6,16 @@ const eventSchema = new Schema(
 		refId: { type: String, trim: true },
 		title: { type: String, required: true, trim: true },
 		description: { type: String, default: "", trim: true },
+		image: {
+			type: new Schema(
+				{
+					imageFileName: { type: String, required: true, trim: true },
+					imageObject: { type: String, required: true, trim: true },
+				},
+				{ _id: false },
+			),
+			default: undefined,
+		},
 		hidden: { type: Boolean, default: false },
 		startsAt: { type: Date, required: true },
 		endsAt: { type: Date, required: true },

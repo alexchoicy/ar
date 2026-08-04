@@ -9,6 +9,7 @@ import { Location } from "../db/schema/location.js";
 import { requireAdmin } from "../middleware/auth.js";
 import { clearCache } from "../middleware/cache.js";
 import { validateBody } from "../middleware/validateBody.js";
+import { createUploadUrl, sanitizeBlobFileName } from "../utils/blob.js";
 import { deleteRecordById } from "./helpers.js";
 import {
 	findOrCreateLocation,
@@ -27,6 +28,10 @@ const eventInputShape = {
 	refId: refIdInput,
 	title: z.string().min(1),
 	description: z.string(),
+	image: z
+		.object({ imageFileName: z.string().min(1) })
+		.nullable()
+		.optional(),
 	hidden: z.boolean().optional(),
 	startsAt: z.coerce.date(),
 	endsAt: z.coerce.date(),
@@ -36,6 +41,13 @@ const eventInputShape = {
 	floor: z.string().default(""),
 	room: z.string().default(""),
 };
+
+function createEventImage(eventId: string, imageFileName: string) {
+	return {
+		imageFileName,
+		imageObject: `events/${eventId}/${new Types.ObjectId().toString()}-${sanitizeBlobFileName(imageFileName)}`,
+	};
+}
 
 const createEventInput = z
 	.object(eventInputShape)
@@ -118,15 +130,20 @@ eventRouter.post(
 	requireAdmin,
 	validateBody(createEventInput),
 	async (req, res) => {
+		const eventId = new Types.ObjectId();
 		const { location, building } = await findOrCreateLocation(
 			req.body.buildingId,
 			req.body.floor,
 			req.body.room,
 		);
 		const event = await Event.create({
+			_id: eventId,
 			...(req.body.refId ? { refId: req.body.refId } : {}),
 			title: req.body.title,
 			description: req.body.description,
+			...(req.body.image
+				? { image: createEventImage(eventId.toString(), req.body.image.imageFileName) }
+				: {}),
 			hidden: req.body.hidden ?? false,
 			startsAt: req.body.startsAt,
 			endsAt: req.body.endsAt,
@@ -136,6 +153,9 @@ eventRouter.post(
 
 		return res.api(201, {
 			event: toEventDetailOutput(event, location, building),
+			imageUploadUrl: event.image
+				? await createUploadUrl(event.image.imageObject)
+				: null,
 		});
 	},
 );
@@ -169,12 +189,18 @@ eventRouter.put(
 			endsAt: req.body.endsAt,
 			locationId: location._id,
 		};
+		if (req.body.image) {
+			$set.image = createEventImage(id, req.body.image.imageFileName);
+		}
 		if (req.body.refId) $set.refId = req.body.refId;
 		if (req.body.hidden !== undefined) $set.hidden = req.body.hidden;
 
+		const $unset: Record<string, ""> = {};
+		if (!req.body.refId) $unset.refId = "";
+		if (req.body.image === null) $unset.image = "";
 		const event = await Event.findByIdAndUpdate(
 			id,
-			req.body.refId ? { $set } : { $set, $unset: { refId: "" } },
+			Object.keys($unset).length ? { $set, $unset } : { $set },
 			{ new: true },
 		).lean();
 
@@ -186,6 +212,10 @@ eventRouter.put(
 
 		return res.api(200, {
 			event: toEventDetailOutput(event, location, building),
+			imageUploadUrl:
+				req.body.image && event.image
+					? await createUploadUrl(event.image.imageObject)
+					: null,
 		});
 	},
 );

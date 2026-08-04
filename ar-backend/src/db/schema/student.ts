@@ -38,9 +38,6 @@ const studentSchema = new Schema(
 	{ timestamps: true },
 );
 
-studentSchema.index({ studentIdIndex: 1 }, { unique: true, sparse: true });
-studentSchema.index({ emailIndex: 1 }, { unique: true });
-
 export type StudentDocument = InferSchemaType<typeof studentSchema>;
 
 export const Student = model<StudentDocument>("Student", studentSchema);

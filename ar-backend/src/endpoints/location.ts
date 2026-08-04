@@ -110,6 +110,12 @@ export function toEventOutput(event: any) {
 		refId: event.refId,
 		title: event.title,
 		description: event.description,
+		image: event.image
+			? {
+					imageFileName: event.image.imageFileName,
+					imageUrl: getBlobUrl(event.image.imageObject),
+				}
+			: null,
 		hidden: event.hidden ?? false,
 		startsAt: event.startsAt,
 		endsAt: event.endsAt,

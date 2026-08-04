@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import { Button } from "@/components/ui/button";
@@ -22,18 +22,22 @@ import {
 	FieldGroup,
 	FieldLabel,
 	FieldLegend,
+	FieldSeparator,
 	FieldSet,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { fetchBuildings } from "@/lib/buildings";
 import type { Building } from "@/lib/buildings";
+import { getInputFile, replacePreviewUrl } from "@/lib/image-preview";
+import { uploadFile } from "@/lib/uploads";
 
 type EventResponse = {
 	id: string;
 	refId?: string;
 	title: string;
 	description: string;
+	image: null | { imageFileName: string; imageUrl: string };
 	startsAt: string;
 	endsAt: string;
 	location: null | {
@@ -50,6 +54,10 @@ const error = ref("");
 const isLoading = ref(true);
 const isSaving = ref(false);
 const buildings = ref<Building[]>([]);
+const currentImageFileName = ref("");
+const currentImageUrl = ref("");
+const previewImageUrl = ref("");
+const imageFile = ref<File | null>(null);
 const form = reactive({
 	refId: "",
 	title: "",
@@ -100,6 +108,8 @@ onMounted(async () => {
 		form.refId = event.refId ?? "";
 		form.title = event.title;
 		form.description = event.description;
+		currentImageFileName.value = event.image?.imageFileName ?? "";
+		currentImageUrl.value = event.image?.imageUrl ?? "";
 		form.buildingId = event.location?.building?.id ?? "";
 		form.floor = event.location?.floor ?? "";
 		form.room = event.location?.room ?? "";
@@ -112,6 +122,29 @@ onMounted(async () => {
 		isLoading.value = false;
 	}
 });
+
+onBeforeUnmount(() => {
+	if (previewImageUrl.value) URL.revokeObjectURL(previewImageUrl.value);
+});
+
+function selectImage(event: Event) {
+	imageFile.value = getInputFile(event);
+	previewImageUrl.value = replacePreviewUrl(
+		previewImageUrl.value,
+		imageFile.value,
+	);
+}
+
+function resetImage() {
+	imageFile.value = null;
+	previewImageUrl.value = replacePreviewUrl(previewImageUrl.value, null);
+}
+
+function removeImage() {
+	resetImage();
+	currentImageFileName.value = "";
+	currentImageUrl.value = "";
+}
 
 function validateForm() {
 	if (!form.title.trim()) return "Title is required.";
@@ -139,6 +172,14 @@ async function save() {
 				credentials: "include",
 				body: JSON.stringify({
 					...form,
+					image:
+						imageFile.value
+							? {
+									imageFileName: imageFile.value.name,
+								}
+							: currentImageFileName.value
+								? undefined
+								: null,
 					startsAt: toIsoDatetime(form.startsAt),
 					endsAt: toIsoDatetime(form.endsAt),
 				}),
@@ -147,6 +188,13 @@ async function save() {
 		const body = await response.json();
 
 		if (!response.ok) throw new Error(body.error ?? "Failed to save event");
+		if (body.data.imageUploadUrl && imageFile.value) {
+			await uploadFile(
+				body.data.imageUploadUrl,
+				imageFile.value,
+				"Failed to upload event image",
+			);
+		}
 
 		await router.push("/?tab=events");
 	} catch (caught) {
@@ -207,6 +255,48 @@ async function save() {
 						</Field>
 					</FieldGroup>
 				</FieldSet>
+
+				<FieldSeparator />
+
+				<FieldSet>
+					<FieldLegend>Event Image</FieldLegend>
+					<Field>
+						<FieldLabel for="event-image">Image</FieldLabel>
+						<FieldDescription>Optional.</FieldDescription>
+						<img
+							v-if="previewImageUrl || currentImageUrl"
+							:src="previewImageUrl || currentImageUrl"
+							:alt="`${form.title || 'Event'} image`"
+							class="aspect-video w-full rounded-md border object-cover"
+						/>
+						<div class="flex gap-2">
+							<Input
+								id="event-image"
+								type="file"
+								accept="image/*"
+								@change="selectImage"
+							/>
+							<Button
+								v-if="imageFile"
+								type="button"
+								variant="outline"
+								@click="resetImage"
+							>
+								Reset
+							</Button>
+							<Button
+								v-if="imageFile || currentImageUrl"
+								type="button"
+								variant="destructive"
+								@click="removeImage"
+							>
+								Remove
+							</Button>
+						</div>
+					</Field>
+				</FieldSet>
+
+				<FieldSeparator />
 
 				<FieldSet>
 					<FieldLegend>Location & Time</FieldLegend>
