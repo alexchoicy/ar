@@ -24,7 +24,7 @@ app.use(
 		contentSecurityPolicy: {
 			directives: {
 				connectSrc: ["'self'", ...blobSources],
-				imgSrc: ["'self'", "data:", ...blobSources],
+				imgSrc: ["'self'", "data:", "blob:", ...blobSources],
 			},
 		},
 	}),
