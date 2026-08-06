@@ -27,6 +27,8 @@ type Booth = {
 	id: string;
 	refId?: string;
 	boothCode: string;
+	boothArea: string;
+	boothNumber: string;
 	name: string;
 	category: string;
 	qrCode: string;
@@ -237,7 +239,7 @@ onMounted(async () => {
 		if (!eventsResponse.ok)
 			throw new Error(eventsBody.error ?? "Failed to load events");
 
-		booths.value = [...boothsBody.data].sort(byRefId);
+		booths.value = boothsBody.data;
 		events.value = [...eventsBody.data].sort(byRefId);
 	} catch (caught) {
 		error.value =
@@ -357,8 +359,8 @@ async function deleteRecord(
 				<Table v-else>
 					<TableHeader>
 						<TableRow>
-							<TableHead>Ref ID</TableHead>
-							<TableHead>Code</TableHead>
+							<TableHead>Area</TableHead>
+							<TableHead>Booth number</TableHead>
 							<TableHead class="w-2/5">Name</TableHead>
 							<TableHead>Category</TableHead>
 							<TableHead class="w-32">Location</TableHead>
@@ -368,8 +370,8 @@ async function deleteRecord(
 					</TableHeader>
 					<TableBody>
 						<TableRow v-for="booth in booths" :key="booth.id">
-							<TableCell>{{ booth.refId || "-" }}</TableCell>
-							<TableCell class="font-medium">{{ booth.boothCode }}</TableCell>
+							<TableCell>{{ booth.boothArea || "-" }}</TableCell>
+							<TableCell class="font-medium">{{ booth.boothNumber || "-" }}</TableCell>
 							<TableCell class="w-2/5">{{ booth.name }}</TableCell>
 							<TableCell>{{ formatInterest(booth.category) }}</TableCell>
 							<TableCell class="w-32 whitespace-nowrap text-xs">{{
