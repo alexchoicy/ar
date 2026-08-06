@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 
 type Booth = {
 	id: string;
-	boothCode: string;
 	boothArea: string;
 	boothNumber: string;
 	name: string;
@@ -159,7 +158,8 @@ onMounted(async () => {
 						{{ boothById(boothId)?.name ?? "Unknown booth" }}
 					</p>
 					<p class="text-sm text-muted-foreground">
-						{{ boothById(boothId)?.boothCode }}
+						{{ boothById(boothId)?.boothArea
+						}}{{ boothById(boothId)?.boothNumber }}
 					</p>
 				</div>
 				<Button
